@@ -19,7 +19,7 @@ Write-Output "OSLanguage: $OSLanguage"
 #Launch OSDCloud
 Write-Output "Launching OSDCloud"
 Write-Output ""
-Write-Output "Start-OSDCloud -OSName $OSName -OSEdition $OSEdition -OSActivation $OSActivation -OSLanguage $OSLanguage"
+Write-Output "Start-OSDCloud -ZTI -OSName $OSName -OSEdition $OSEdition -OSActivation $OSActivation -OSLanguage $OSLanguage"
 Write-Output ""
 Start-OSDCloud -ZTI -OSName $OSName -OSEdition $OSEdition -OSActivation $OSActivation -OSLanguage $OSLanguage 
 Write-Output ""
