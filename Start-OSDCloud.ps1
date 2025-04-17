@@ -24,3 +24,13 @@ Write-Output ""
 Start-OSDCloud -ZTI -OSName $OSName -OSEdition $OSEdition -OSActivation $OSActivation -OSLanguage $OSLanguage 
 Write-Output ""
 Write-Output "--------------------------------------"
+
+#Copy new SetupComplete.cmd files
+#Copy-Item "X:\Build.ps1" "C:\OSDCloud\Scripts\SetupComplete\Build.ps1" -Force
+#Copy-Item "X:\SetupComplete.cmd" "C:\OSDCloud\Scripts\SetupComplete\SetupComplete.cmd" -Force
+
+#Copy-Item "X:\Build.ps1" "C:\Windows\Setup\Scripts\Build.ps1" -Force
+#Copy-Item "X:\SetupComplete.cmd" "C:\Windows\Setup\Scripts\SetupComplete.cmd" -Force
+#Copy Custom Scripts to run in OOBE.
+
+
