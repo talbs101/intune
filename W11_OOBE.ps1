@@ -32,7 +32,8 @@ $Params = @{
     OSEdition = "Pro"
     OSLanguage = "en-gb"
     OSLicense = "Volume"
-    ZTI = $true
+    FindImageFile = "X:\OSDCloud\install.wim"
+    ZTI = $true    
     Firmware = $false
 }
 Start-OSDCloud @Params
