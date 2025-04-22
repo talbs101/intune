@@ -16,12 +16,12 @@ Import-Module OSD -Force
 #   [OS] Ask for Computer Name
 #=======================================================================
 
-Add-Type -AssemblyName Microsoft.VisualBasic
-$deviceName = [Microsoft.VisualBasic.Interaction]::InputBox(
-    "Enter the device name:",
-    "Device Name Required",
-    "$env:COMPUTERNAME"
-)
+#Add-Type -AssemblyName Microsoft.VisualBasic
+#$deviceName = [Microsoft.VisualBasic.Interaction]::InputBox(
+    #"Enter the device name:",
+    #"Device Name Required",
+    #"$env:COMPUTERNAME"
+#)
 
 #=======================================================================
 #   [OS] Params and Start-OSDCloud
@@ -42,6 +42,7 @@ Start-OSDCloud @Params
 #================================================
 
 Copy-Item "X:\OSDCloud\Config\Scripts\SetupComplete\Build.ps1" "C:\OSDCloud\Scripts\Build.ps1" -Force
+Copy-Item "X:\OSDCloud\Config\Scripts\SetupComplete\Get-WindowsAutoPilotInfo.ps1" "C:\OSDCloud\Scripts\Get-WindowsAutoPilotInfo.ps1" -Force
 
 Write-Host -ForegroundColor Green "Create C:\ProgramData\OSDeploy\OSDeploy.OOBEDeploy.json"
 $OOBEDeployJson = @'
