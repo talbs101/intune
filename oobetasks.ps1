@@ -24,6 +24,10 @@ Start-Process PowerShell -ArgumentList "-NoL -C Invoke-WebPSScript https://check
 Write-Host -ForegroundColor DarkGray "Executing OOBEDeploy Script fomr OSDCloud Module"
 Start-Process PowerShell -ArgumentList "-NoL -C Start-OOBEDeploy" -Wait
 
+Write-Host -ForegroundColor DarkGray "Running Custom Script from C:\OSDCloud\Scripts"
+Start-Process PowerShell -ArgumentList "-NoL -ExecutionPolicy Bypass -File C:\OSDCloud\Scripts\Build.ps1" -Wait
+
+
 Write-Host -ForegroundColor DarkGray "Executing Cleanup Script"
 Start-Process PowerShell -ArgumentList "-NoL -C Invoke-WebPSScript https://cleanup.osdcloud.ch" -Wait
 
