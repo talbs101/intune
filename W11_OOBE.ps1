@@ -40,6 +40,9 @@ Start-OSDCloud @Params
 #================================================
 #  [PostOS] OOBEDeploy Configuration
 #================================================
+
+Copy-Item "X:\OSDCloud\Config\Scripts\SetupComplete\Build.ps1" "C:\OSDCloud\Build.ps1" -Force
+
 Write-Host -ForegroundColor Green "Create C:\ProgramData\OSDeploy\OSDeploy.OOBEDeploy.json"
 $OOBEDeployJson = @'
 {
@@ -136,6 +139,7 @@ Start /Wait PowerShell -NoL -C Install-Module AutopilotOOBE -Force -Verbose
 Start /Wait PowerShell -NoL -C Install-Module OSD -Force -Verbose
 Start /Wait PowerShell -NoL -C Invoke-WebPSScript https://check-autopilotprereq.osdcloud.ch
 Start /Wait PowerShell -NoL -C Start-OOBEDeploy
+Start /Wait PowerShell -NoL -C "C:\OSDCloud\Build.ps1"
 Start /Wait PowerShell -NoL -C Invoke-WebPSScript https://tpm.osdcloud.ch
 Start /Wait PowerShell -NoL -C Invoke-WebPSScript https://cleanup.osdcloud.ch
 Start /Wait PowerShell -NoL -C Restart-Computer -Force
