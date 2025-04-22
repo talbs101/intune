@@ -32,7 +32,7 @@ $Params = @{
     OSEdition = "Pro"
     OSLanguage = "en-gb"
     OSLicense = "Volume"
-    FindImageFile = "X:\OSDCloud\install.wim"
+    FindImageFile = "X:\OSDCloud\Config\install.wim"
     ZTI = $true    
     Firmware = $false
 }
