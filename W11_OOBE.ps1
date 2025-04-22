@@ -41,7 +41,7 @@ Start-OSDCloud @Params
 #  [PostOS] OOBEDeploy Configuration
 #================================================
 
-Copy-Item "X:\OSDCloud\Config\Scripts\SetupComplete\Build.ps1" "C:\OSDCloud\Build.ps1" -Force
+Copy-Item "X:\OSDCloud\Config\Scripts\SetupComplete\Build.ps1" "C:\OSDCloud\Scripts\Build.ps1" -Force
 
 Write-Host -ForegroundColor Green "Create C:\ProgramData\OSDeploy\OSDeploy.OOBEDeploy.json"
 $OOBEDeployJson = @'
