@@ -16,7 +16,7 @@ Import-Module OSD -Force
 $cred = Get-Credential
 
 # Map the drive (example uses drive letter Z: and network share \\Server\Share)
-New-PSDrive -Name Z -PSProvider FileSystem -Root "\\srv-tcq-wds03\Intune" -Credential $cred -Persist
+New-PSDrive -Name Z -PSProvider FileSystem -Root "\\srv-tcq-wds03\OSDCloud" -Credential $cred -Persist
 
 
 
