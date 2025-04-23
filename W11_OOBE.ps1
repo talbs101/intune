@@ -42,8 +42,6 @@ $Params = @{
     OSEdition = "Pro"
     OSLanguage = "en-gb"
     OSLicense = "Volume"
-    ImageFileUrl = "Z:\OS\Windows 11 24H2\install.wim"
-    ImageIndex = "6"
     ZTI = $true    
     Firmware = $false
 }
