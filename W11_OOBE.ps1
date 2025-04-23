@@ -34,20 +34,20 @@ New-PSDrive -Name Z -PSProvider FileSystem -Root "\\srv-tcq-wds03\OSDCloud" -Cre
 #=======================================================================
 #   [OS] Params and Start-OSDCloud
 #=======================================================================
-Start-OSDCloud -imagefileurl "Z:\OS\Windows 11 24H2\install.wim"
+#Start-OSDCloud -imagefileurl "Z:\OS\Windows 11 24H2\install.wim"
 
-#$Params = @{
-    #OSVersion = "Windows 11"
-    #OSBuild = "24H2"
-    #OSEdition = "Pro"
-    #OSLanguage = "en-gb"
-    #OSLicense = "Volume"
-    #FindImageFile = "Z:\install.wim"
-    #ImageIndex = "6"
-    #ZTI = $true    
-    #Firmware = $false
-#}
-#Start-OSDCloud @Params
+$Params = @{
+    OSVersion = "Windows 11"
+    OSBuild = "24H2"
+    OSEdition = "Pro"
+    OSLanguage = "en-gb"
+    OSLicense = "Volume"
+    ImageFileUrl = "Z:\OS\Windows 11 24H2\install.wim"
+    ImageIndex = "6"
+    ZTI = $true    
+    Firmware = $false
+}
+Start-OSDCloud @Params
 
 #================================================
 #  [PostOS] OOBEDeploy Configuration
