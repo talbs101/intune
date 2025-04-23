@@ -10,7 +10,15 @@ Write-Host -ForegroundColor Green "Updating OSD PowerShell Module"
 Install-Module OSD -Force
 
 Write-Host  -ForegroundColor Green "Importing OSD PowerShell Module"
-Import-Module OSD -Force   
+Import-Module OSD -Force 
+
+# Prompt for credentials
+$cred = Get-Credential
+
+# Map the drive (example uses drive letter Z: and network share \\Server\Share)
+New-PSDrive -Name Z -PSProvider FileSystem -Root "\\srv-tcq-wds03\Intune" -Credential $cred -Persist
+
+
 
 #=======================================================================
 #   [OS] Ask for Computer Name
@@ -32,7 +40,7 @@ $Params = @{
     OSEdition = "Pro"
     OSLanguage = "en-gb"
     OSLicense = "Volume"
-    FindImageFile = "X:\OSDCloud\Config\install.wim"
+    FindImageFile = "Z:\install.wim"
     ZTI = $true    
     Firmware = $false
 }
