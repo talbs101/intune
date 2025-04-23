@@ -41,6 +41,7 @@ $Params = @{
     OSLanguage = "en-gb"
     OSLicense = "Volume"
     FindImageFile = "Z:\install.wim"
+    ImageIndex = "6"
     ZTI = $true    
     Firmware = $false
 }
