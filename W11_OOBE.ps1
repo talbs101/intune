@@ -34,7 +34,7 @@ New-PSDrive -Name Z -PSProvider FileSystem -Root "\\srv-tcq-wds03\Intune" -Crede
 #=======================================================================
 #   [OS] Params and Start-OSDCloud
 #=======================================================================
-Start-OSDCloud -FindImageFile -OSImageIndex 6
+Start-OSDCloud -imagefileurl "Z:\OSDCloud\OS\Windows 11 24H2\install.wim"
 
 #$Params = @{
     #OSVersion = "Windows 11"
