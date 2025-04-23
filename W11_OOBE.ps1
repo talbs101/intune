@@ -34,18 +34,20 @@ New-PSDrive -Name Z -PSProvider FileSystem -Root "\\srv-tcq-wds03\Intune" -Crede
 #=======================================================================
 #   [OS] Params and Start-OSDCloud
 #=======================================================================
-$Params = @{
-    OSVersion = "Windows 11"
-    OSBuild = "24H2"
-    OSEdition = "Pro"
-    OSLanguage = "en-gb"
-    OSLicense = "Volume"
-    FindImageFile = "Z:\install.wim"
-    ImageIndex = "6"
-    ZTI = $true    
-    Firmware = $false
-}
-Start-OSDCloud @Params
+Start-OSDCloud -FindImageFile -OSImageIndex 6
+
+#$Params = @{
+    #OSVersion = "Windows 11"
+    #OSBuild = "24H2"
+    #OSEdition = "Pro"
+    #OSLanguage = "en-gb"
+    #OSLicense = "Volume"
+    #FindImageFile = "Z:\install.wim"
+    #ImageIndex = "6"
+    #ZTI = $true    
+    #Firmware = $false
+#}
+#Start-OSDCloud @Params
 
 #================================================
 #  [PostOS] OOBEDeploy Configuration
