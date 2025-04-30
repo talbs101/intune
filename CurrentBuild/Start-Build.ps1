@@ -204,6 +204,39 @@ Invoke-WebRequest -Uri $blobUrl -OutFile $localPath
 # Run the installer
 Start-Process -FilePath $localPath -ArgumentList "/install /quiet /norestart /CID=$CrowdStrikeSecret" -Wait -NoNewWindow
 
+       
+
+#=======================================================================
+#   [OS] Enroll in Autopilot
+#=======================================================================
+
+Write-Host -ForegroundColor Green "Starting Autopilot Registration"
+        
+import-module OSD 
+
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        
+# Define the full path to the AutoPilot script
+$autoPilotScriptPath = "C:\OSDCloud\Scripts\Get-WindowsAutoPilotInfo.ps1"
+#Get-WindowsAutopilotInfo -Online -GroupTag Standard -Assign -AssignedComputerName $deviceName
+
+$AutopilotParams = @{
+    Online               = $true
+    TenantId             = $AutopilotTenantId
+    AppId                = $AutopilotAppId
+    AppSecret            = $AutopilotAppSecret
+    GroupTag             = 'Standard'
+    Assign               = $true
+    AssignedComputerName = $deviceName
+}
+
+Get-WindowsAutoPilotInfo @AutopilotParams
+
+& $autoPilotScriptPath @AutopilotParams
+
+write-host -ForegroundColor Gray '$AutopilotRegisterCommand'" = Get-WindowsAutopilotInfo -Online -GroupTag Standard -Assign -AssignedComputerName $deviceName"
+        
+        
 #=======================================================================
 #   [OS] Start Logic App
 #=======================================================================
@@ -264,40 +297,6 @@ $response = Invoke-RestMethod -Uri $logicAppUrl -Method Post -Body $payload -Hea
 
 # Output response
 $response
-       
-
-#=======================================================================
-#   [OS] Enroll in Autopilot
-#=======================================================================
-
-Write-Host -ForegroundColor Green "Starting Autopilot Registration"
-        
-import-module OSD 
-
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        
-# Define the full path to the AutoPilot script
-$autoPilotScriptPath = "C:\OSDCloud\Scripts\Get-WindowsAutoPilotInfo.ps1"
-#Get-WindowsAutopilotInfo -Online -GroupTag Standard -Assign -AssignedComputerName $deviceName
-
-$AutopilotParams = @{
-    Online               = $true
-    TenantId             = $AutopilotTenantId
-    AppId                = $AutopilotAppId
-    AppSecret            = $AutopilotAppSecret
-    GroupTag             = 'Standard'
-    Assign               = $true
-    AssignedComputerName = $deviceName
-}
-
-Get-WindowsAutoPilotInfo @AutopilotParams
-
-& $autoPilotScriptPath @AutopilotParams
-
-write-host -ForegroundColor Gray '$AutopilotRegisterCommand'" = Get-WindowsAutopilotInfo -Online -GroupTag Standard -Assign -AssignedComputerName $deviceName"
-        
-        
-
 
 
           
