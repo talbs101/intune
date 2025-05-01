@@ -72,6 +72,7 @@ else {
 #   [OS] Decrypt BitLocker
 #=======================================================================
 
+# Decrypting no matter the current status so that Intune policy enforces Encryption to 256bit strength
 Write-Host -ForegroundColor Green "Decrypting BitLocker"
 Manage-bde -off C: 
     
@@ -80,6 +81,7 @@ Manage-bde -off C:
 #   [OS] Enable Location Services
 #=======================================================================
 
+# Required to fix the issue where Intune doesn't obtain the WiFi mac address
 Write-Host -ForegroundColor Green "Enabling Location Services"
 
 # Define the registry path
@@ -121,9 +123,7 @@ if ($UpdateWindows) {
     Write-Host -ForegroundColor DarkCyan 'Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -IgnoreReboot'
     #Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -IgnoreReboot -NotTitle 'Malicious'
 }
-    
-
-
+   
 
 
 #=======================================================================
