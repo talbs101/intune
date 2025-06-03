@@ -210,6 +210,20 @@ Start-Process -FilePath $localPath -ArgumentList "/install /quiet /norestart /CI
 #   [OS] Enroll in Autopilot
 #=======================================================================
 
+# Read Build Type and Builder
+
+$BuildType = "C:\OSDCloud\BuildType.txt"
+
+if (Test-Path $BuildType) {
+    $GroupTag = Get-Content "C:\OSDCloud\BuildType.txt" -Raw
+    $GroupTag = $BuildType.Trim()
+}
+else {
+    Write-Warning "Build Type file not found. Autopilot will register with Standard Group Tag ."
+    $GroupTag = "Standard"
+        
+}
+
 Write-Host -ForegroundColor Green "Starting Autopilot Registration"
         
 import-module OSD 
@@ -225,7 +239,7 @@ $AutopilotParams = @{
     TenantId             = $AutopilotTenantId
     AppId                = $AutopilotAppId
     AppSecret            = $AutopilotAppSecret
-    GroupTag             = 'Standard'
+    GroupTag             = $GroupTag
     Assign               = $true
     AssignedComputerName = $deviceName
 }
@@ -234,7 +248,7 @@ Get-WindowsAutoPilotInfo @AutopilotParams
 
 & $autoPilotScriptPath @AutopilotParams
 
-write-host -ForegroundColor Gray '$AutopilotRegisterCommand'" = Get-WindowsAutopilotInfo -Online -GroupTag Standard -Assign -AssignedComputerName $deviceName"
+write-host -ForegroundColor Gray '$AutopilotRegisterCommand'" = Get-WindowsAutopilotInfo -Online -GroupTag $GroupTag -Assign -AssignedComputerName $deviceName"
         
         
 #=======================================================================
