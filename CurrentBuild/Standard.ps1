@@ -25,7 +25,7 @@ Write-Host -ForegroundColor DarkGray "Executing OOBEDeploy Script from OSDCloud 
 Start-Process PowerShell -ArgumentList "-NoL -C Start-OOBEDeploy" -Wait
 
 Write-Host -ForegroundColor DarkGray "Running Start-Build.ps1 from Repo"
-Start-Process PowerShell -ArgumentList "-NoL -C Invoke-WebPSScript https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Start-Build.ps1" -Wait
+Start-Process PowerShell -ArgumentList "-NoL -C Invoke-WebPSScript https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Start-Build-Standard.ps1" -Wait
 
 
 Write-Host -ForegroundColor DarkGray "Executing Cleanup Script"
