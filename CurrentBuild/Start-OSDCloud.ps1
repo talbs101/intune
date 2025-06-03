@@ -144,51 +144,6 @@ Copy-Item "X:\OSDCloud\Config\Scripts\SetupComplete\Get-WindowsAutoPilotInfo.ps1
 Write-Host -ForegroundColor Green "Writing Device Name to C:\OSDCloud\DeviceName.txt"
 Set-Content -Path "C:\OSDCloud\DeviceName.txt" -Value $deviceName -Force
 
-#================================================
-#  [PostOS] OOBEDeploy JSON Creation
-#================================================
-Write-Host -ForegroundColor Green "Creating C:\ProgramData\OSDeploy\OSDeploy.OOBEDeploy.json"
-$OOBEDeployJson = @'
-{
-    "AddNetFX3":  { "IsPresent": true },
-    "Autopilot":  { "IsPresent": false },
-    "RemoveAppx": [
-        "Microsoft.BingWeather",
-        "Microsoft.BingNews",
-        "Microsoft.GamingApp",
-        "Microsoft.GetHelp",
-        "Microsoft.Getstarted",
-        "Microsoft.Messaging",
-        "Microsoft.MicrosoftOfficeHub",
-        "Microsoft.MicrosoftSolitaireCollection",
-        "Microsoft.MicrosoftStickyNotes",
-        "Microsoft.MSPaint",
-        "Microsoft.People",
-        "Microsoft.PowerAutomateDesktop",
-        "Microsoft.StorePurchaseApp",
-        "Microsoft.Todos",
-        "microsoft.windowscommunicationsapps",
-        "Microsoft.WindowsFeedbackHub",
-        "Microsoft.WindowsMaps",
-        "Microsoft.WindowsSoundRecorder",
-        "Microsoft.Xbox.TCUI",
-        "Microsoft.XboxGameOverlay",
-        "Microsoft.XboxGamingOverlay",
-        "Microsoft.XboxIdentityProvider",
-        "Microsoft.XboxSpeechToTextOverlay",
-        "Microsoft.YourPhone",
-        "Microsoft.ZuneMusic",
-        "Microsoft.ZuneVideo"
-    ],
-    "UpdateDrivers": { "IsPresent": true },
-    "UpdateWindows": { "IsPresent": true }
-}
-'@
-
-if (!(Test-Path "C:\ProgramData\OSDeploy")) {
-    New-Item "C:\ProgramData\OSDeploy" -ItemType Directory -Force | Out-Null
-}
-$OOBEDeployJson | Out-File -FilePath "C:\ProgramData\OSDeploy\OSDeploy.OOBEDeploy.json" -Encoding ascii -Force
 
 #================================================
 #  [PostOS] Autopilot OOBE CMD (unchanged)
@@ -210,21 +165,35 @@ $OOBECMD | Out-File -FilePath 'C:\Windows\System32\OOBE.cmd' -Encoding ascii -Fo
 #================================================
 #  [PostOS] SetupComplete CMD – Varies By Build Type
 #================================================
+#================================================
+#  [PostOS] SetupComplete CMD – Varies By Build Type
+#================================================
+# Define which GitHub script to invoke based on the build type:
+
 switch ($buildType) {
     "Standard" {
-        $scriptUrl = "https://raw.githubusercontent.com/yourorg/yourrepo/main/SetupComplete-Standard.ps1"
+        $scriptUrl = "https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Standard.ps1"
+        Set-Content -Path "C:\OSDCloud\BuildType.txt" -Value $buildType -Force
+        Set-Content -Path "C:\OSDCloud\Builder.txt" -Value $builder -Force
     }
     "Shared" {
-        $scriptUrl = "https://raw.githubusercontent.com/yourorg/yourrepo/main/SetupComplete-Shared.ps1"
+        $scriptUrl = "https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Standard.ps1"
+        Set-Content -Path "C:\OSDCloud\BuildType.txt" -Value $buildType -Force
+        Set-Content -Path "C:\OSDCloud\Builder.txt" -Value $builder -Force
     }
     "Kiosk" {
-        $scriptUrl = "https://raw.githubusercontent.com/yourorg/yourrepo/main/SetupComplete-Kiosk.ps1"
+        $scriptUrl = "https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Standard.ps1"
+        Set-Content -Path "C:\OSDCloud\BuildType.txt" -Value $buildType -Force
+        Set-Content -Path "C:\OSDCloud\Builder.txt" -Value $builder -Force
     }
     "Windows 11" {
-        $scriptUrl = "https://raw.githubusercontent.com/yourorg/yourrepo/main/SetupComplete-Win11.ps1"
+        $scriptUrl = "https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Standard.ps1"
+        Set-Content -Path "C:\OSDCloud\BuildType.txt" -Value $buildType -Force
+        Set-Content -Path "C:\OSDCloud\Builder.txt" -Value $builder -Force
     }
     default {
-        $scriptUrl = "https://raw.githubusercontent.com/yourorg/yourrepo/main/SetupComplete-Standard.ps1"
+        # Fallback in case something unexpected happened
+        $scriptUrl = "https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Standard.ps1"
     }
 }
 
