@@ -319,7 +319,8 @@ $response
 #=======================================================================
 
 Remove-Item -Path "C:\Temp" -Recurse -Force
-
+Write-Host -ForegroundColor DarkGray "Executing Cleanup Script"
+Invoke-WebPSScript "https://cleanup.osdcloud.ch" -Wait
 
 
 
