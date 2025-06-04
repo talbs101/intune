@@ -9,7 +9,7 @@ Write-Host ">>> [Start-Build.ps1] BEGIN at $(Get-Date)" -ForegroundColor Yellow
 #   [OS] Obtain Secrets File
 #=======================================================================
 
-$secretsFile = 'C:\OSDCloud\Config\Scripts\secrets.ps1'
+$secretsFile = 'C:\OSDCloud\Scripts\secrets.ps1'
 if (Test-Path $secretsFile) {
     . $secretsFile
     Write-Host "Loaded secrets from $secretsFile"
