@@ -16,22 +16,6 @@ Write-Host ">>> [Start-Build.ps1] BEGIN at $(Get-Date)" -ForegroundColor Yellow
 $secretsFile = 'C:\OSDCloud\Scripts\Secrets.ps1'
 Write-Host "Looking for secrets file at: $secretsFile" -ForegroundColor Cyan
 
-if (Test-Path $secretsFile) {
-    try {
-        Write-Host "Dot-sourcing secrets file…" -ForegroundColor Cyan
-        . $secretsFile
-        Write-Host "✓ Loaded secrets from $secretsFile" -ForegroundColor Green
-    }
-    catch {
-        Write-Error "❌ Error while dot-sourcing $secretsFile : $_"
-        exit 1
-    }
-}
-else {
-    Write-Warning "⚠ Secrets file not found at '$secretsFile' — expecting credentials in environment variables."
-    # exit 1    # Uncomment if you want to require this file always exist
-}
-
 
 # ──────────────────────────────────────────────────────
 # 2️⃣ Assign your “parameters” from the environment
