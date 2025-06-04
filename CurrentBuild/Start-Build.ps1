@@ -14,7 +14,13 @@ Write-Host ">>> [Start-Build.ps1] BEGIN at $(Get-Date)" -ForegroundColor Yellow
 #=======================================================================
 
 $secretsFile = 'C:\OSDCloud\Scripts\Secrets.ps1'
-Write-Host "Looking for secrets file at: $secretsFile" -ForegroundColor Cyan
+if (Test-Path $secretsFile) {
+    . $secretsFile
+    Write-Host "✓ Dot-sourced $secretsFile"
+}
+else {
+    Write-Warning "⚠ Secrets file not found at $secretsFile"
+}
 
 
 # ──────────────────────────────────────────────────────
