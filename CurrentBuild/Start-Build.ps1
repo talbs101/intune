@@ -9,14 +9,39 @@ Write-Host ">>> [Start-Build.ps1] BEGIN at $(Get-Date)" -ForegroundColor Yellow
 #   [OS] Obtain Secrets File
 #=======================================================================
 
-$secretsFile = 'C:\OSDCloud\Scripts\secrets.ps1'
+#=======================================================================
+#   [OS] Obtain Secrets File
+#=======================================================================
+
+# NOTE: in your OOBE script you copied Secrets.ps1 to:
+#       C:\OSDCloud\Scripts\Secrets.ps1
+#       (not C:\OSDCloud\Config\Scripts\secrets.ps1)
+#
+# So we adjust to the path where the file actually lives:
+
+$secretsFile = 'C:\OSDCloud\Scripts\Secrets.ps1'
+Write-Host "Looking for secrets file at: $secretsFile" -ForegroundColor Cyan
+
 if (Test-Path $secretsFile) {
-    . $secretsFile
-    Write-Host "Loaded secrets from $secretsFile"
+    try {
+        Write-Host "Dot-sourcing secrets file…" -ForegroundColor Cyan
+        . $secretsFile
+        Write-Host "✓ Loaded secrets from $secretsFile" -ForegroundColor Green
+    }
+    catch {
+        Write-Error "❌ Error while dot-sourcing $secretsFile : $_"
+        # Depending on your needs, you can either:
+        #   - exit 1
+        #   - or continue, assuming you’ll use env-vars instead of the file
+        exit 1
+    }
 }
 else {
-    Write-Warning "Secrets file not found at $secretsFile — expecting credentials in env-vars."
+    Write-Warning "⚠ Secrets file not found at '$secretsFile' — expecting credentials in environment variables."
+    # If you want to continue anyway and rely purely on env-vars, omit exit here
+    # exit 1
 }
+
 
 # ──────────────────────────────────────────────────────
 # 2️⃣ Assign your “parameters” from the environment
