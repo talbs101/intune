@@ -191,42 +191,16 @@ Start /Wait PowerShell -NoL -C Restart-Computer -Force
 '@
 $OOBECMD | Out-File -FilePath 'C:\Windows\System32\OOBE.cmd' -Encoding ascii -Force
 
-#================================================
-#  [PostOS] SetupComplete CMD – Varies By Build Type
-#================================================
-# Define which GitHub script to invoke based on the build type:
-switch ($buildType) {
-    "Standard" {
-        $scriptUrl = "https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Standard.ps1"
-        Set-Content -Path "C:\OSDCloud\BuildType.txt" -Value $buildType -Force
-        Set-Content -Path "C:\OSDCloud\Builder.txt" -Value $builder -Force
-    }
-    "Shared" {
-        $scriptUrl = "https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Standard.ps1"
-        Set-Content -Path "C:\OSDCloud\BuildType.txt" -Value $buildType -Force
-        Set-Content -Path "C:\OSDCloud\Builder.txt" -Value $builder -Force
-    }
-    "Kiosk" {
-        $scriptUrl = "https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Standard.ps1"
-        Set-Content -Path "C:\OSDCloud\BuildType.txt" -Value $buildType -Force
-        Set-Content -Path "C:\OSDCloud\Builder.txt" -Value $builder -Force
-    }
-    "Windows 11" {
-        $scriptUrl = "https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Standard.ps1"
-        Set-Content -Path "C:\OSDCloud\BuildType.txt" -Value $buildType -Force
-        Set-Content -Path "C:\OSDCloud\Builder.txt" -Value $builder -Force
-    }
-    default {
-        # Fallback in case something unexpected happened
-        $scriptUrl = "https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Standard.ps1"
-    }
-}
 
-Write-Host -ForegroundColor Green "Creating C:\Windows\Setup\Scripts\SetupComplete.cmd (BuildType = $buildType)"
-$SetupCompleteCMD = @"
+#================================================
+#  [PostOS] SetupComplete CMD Command Line
+#================================================
+Write-Host -ForegroundColor Green "Create C:\Windows\Setup\Scripts\SetupComplete.cmd"
+$SetupCompleteCMD = @'
 powershell.exe -Command Set-ExecutionPolicy RemoteSigned -Force
-powershell.exe -Command "& {IEX (IRM $scriptUrl)}"
-"@
+powershell.exe -Command "& {IEX (IRM https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Standard.ps1)}"
+'@
+$SetupCompleteCMD | Out-File -FilePath 'C:\Windows\Setup\Scripts\SetupComplete.cmd' -Encoding ascii -Force
 # Ensure the Setup Scripts folder exists:
 if (!(Test-Path "C:\Windows\Setup\Scripts")) {
     New-Item "C:\Windows\Setup\Scripts" -ItemType Directory -Force | Out-Null
