@@ -18,22 +18,12 @@ Add-Type -AssemblyName System.Windows.Forms
 #-----------------------------------------------
 #   Ask for Device Name
 #-----------------------------------------------
+Add-Type -AssemblyName Microsoft.VisualBasic
 $deviceName = [Microsoft.VisualBasic.Interaction]::InputBox(
     "Enter the device name:",
     "Device Name Required",
     "$env:COMPUTERNAME"
 )
-
-if ([string]::IsNullOrWhiteSpace($deviceName)) {
-    [System.Windows.Forms.MessageBox]::Show(
-        "You must enter a device name to continue.",
-        "Device Name Required",
-        [System.Windows.Forms.MessageBoxButtons]::OK,
-        [System.Windows.Forms.MessageBoxIcon]::Warning
-    )
-    exit
-}
-
 #-----------------------------------------------
 #   Ask for Build Type & Builder via WinForms
 #-----------------------------------------------
@@ -90,15 +80,6 @@ $button.Add_Click({
     $selectedBuild   = $comboBuild.SelectedItem
     $selectedBuilder = $comboBuilder.SelectedItem
 
-    if (-not $selectedBuild -or -not $selectedBuilder) {
-        [System.Windows.Forms.MessageBox]::Show(
-            "Please select both a build type and a builder.",
-            "Selection Required",
-            [System.Windows.Forms.MessageBoxButtons]::OK,
-            [System.Windows.Forms.MessageBoxIcon]::Warning
-        )
-        return
-    }
 
     # Assign to outer‐scope variables and close form
     $script:buildType = $selectedBuild
@@ -115,7 +96,6 @@ $form.Add_Shown({ $form.Activate() })
 # If user closed the form without clicking Start, exit
 if (-not $buildType -or -not $builder) {
     Write-Host "No build type or builder selected. Exiting."
-    exit
 }
 
 #================================================
@@ -125,12 +105,6 @@ if ((Get-MyComputerModel) -match 'Virtual') {
     Write-Host -ForegroundColor Green "Setting Display Resolution to 1600x900"
     Set-DisRes 1600
 }
-
-#================================================
-#   [PreOS] Import OSD Module
-#================================================
-Write-Host -ForegroundColor Green "Importing OSD PowerShell Module"
-Import-Module OSD -Force
 
 #================================================
 #   [OS] Start OSDCloud
