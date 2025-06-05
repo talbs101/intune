@@ -4,10 +4,6 @@
 
 $secretsFile = 'C:\OSDCloud\Scripts\Secrets.ps1'
 . $secretsFile
-Write-Host "✓ Dot-sourced $secretsFile"
-
-
-
 # ──────────────────────────────────────────────────────
 # 2️⃣ Assign your “parameters” from the environment
 # ──────────────────────────────────────────────────────
