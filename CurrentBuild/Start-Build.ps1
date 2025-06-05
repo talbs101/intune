@@ -308,6 +308,7 @@ $response
 #=======================================================================
 #   [OS] Tidy Up
 #=======================================================================
+Read-Host -Prompt "Yes"
 
 Remove-Item -Path "C:\Temp" -Recurse -Force
 Write-Host -ForegroundColor DarkGray "Executing Cleanup Script"
