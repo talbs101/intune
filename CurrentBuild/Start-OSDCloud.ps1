@@ -164,6 +164,8 @@ Copy-Item "X:\OSDCloud\Config\Scripts\SetupComplete\Secrets.ps1" "C:\OSDCloud\Sc
 
 
 Set-Content -Path "C:\OSDCloud\DeviceName.txt" -Value $deviceName -Force
+Set-Content -Path "C:\OSDCloud\BuildType.txt" -Value $buildType -Force
+Set-Content -Path "C:\OSDCloud\Builder.txt" -Value $builder -Force
 
 #================================================
 #  [PostOS] OOBEDeploy Configuration
