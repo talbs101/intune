@@ -161,6 +161,7 @@ Start-OSDCloud @Params
 #================================================
 Write-Host -ForegroundColor Green "Copying SetupComplete dependencies..."
 Copy-Item "X:\OSDCloud\Config\Scripts\SetupComplete\Secrets.ps1" "C:\OSDCloud\Scripts\Secrets.ps1" -Force
+Copy-Item "X:\OSDCloud\Config\Scripts\SetupComplete\Get-WindowsAutoPilotInfo.ps1" "C:\OSDCloud\Scripts\Get-WindowsAutoPilotInfo.ps1" -Force
 
 
 Set-Content -Path "C:\OSDCloud\DeviceName.txt" -Value $deviceName -Force
