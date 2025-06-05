@@ -23,6 +23,8 @@ $AutopilotAppSecret = $env:BUILD_AutopilotAppSecret
 # Read saved device name
 
 $DeviceNameFile = "C:\OSDCloud\DeviceName.txt"
+$BuildTypeFile = "C:\OSDCloud\BuildType.txt"
+$BuilderFile = "C:\OSDCloud\Builder.txt"
 
 if (Test-Path $DeviceNameFile) {
     $deviceName = Get-Content "C:\OSDCloud\DeviceName.txt" -Raw
@@ -32,7 +34,16 @@ else {
     Write-Warning "DeviceName file not found. Autopilot will register with temporary name $env:computername ."
     
 }
+
+if (Test-Path $BuilderFile) {
+    $builderName = Get-Content "C:\OSDCloud\Builder.txt" -Raw
+    $builder= $buildName.Trim()
+}
+else {
+    Write-Warning "Build Type file not found."
+    $builder = "James"
     
+}
 
 # ───────────────────────────────────────────────────────────────
 # Rename the computer to the device name you collected
@@ -202,8 +213,8 @@ Start-Process -FilePath $localPath -ArgumentList "/install /quiet /norestart /CI
 $BuildType = "C:\OSDCloud\BuildType.txt"
 
 if (Test-Path $BuildType) {
-    $GroupTag = Get-Content "C:\OSDCloud\BuildType.txt" -Raw
-    $GroupTag = $BuildType.Trim()
+    $GroupTagName = Get-Content "C:\OSDCloud\BuildType.txt" -Raw
+    $GroupTag = $GroupTagName.Trim()
 }
 else {
     Write-Warning "Build Type file not found. Autopilot will register with Standard Group Tag ."
