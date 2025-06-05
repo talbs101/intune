@@ -12,36 +12,48 @@ Import-Module OSD -Force
 #   [PreOS] Update Module & Environment Preparation
 #================================================
 
-Add-Type -AssemblyName Microsoft.VisualBasic
 Add-Type -AssemblyName System.Windows.Forms
 
-#-----------------------------------------------
-#   Ask for Device Name
-#-----------------------------------------------
+# ───────────────────────────────────────────────────────────────────────
+# Step 1: Ask for Device Name via VB InputBox (unchanged)
+# ───────────────────────────────────────────────────────────────────────
 Add-Type -AssemblyName Microsoft.VisualBasic
 $deviceName = [Microsoft.VisualBasic.Interaction]::InputBox(
     "Enter the device name:",
     "Device Name Required",
     "$env:COMPUTERNAME"
 )
-#-----------------------------------------------
-#   Ask for Build Type & Builder via WinForms
-#-----------------------------------------------
-$buildType   = $null
-$builder     = $null
-$form        = New-Object System.Windows.Forms.Form
-$form.Text   = "Build Selector"
-$form.Size   = New-Object System.Drawing.Size(350,300)
+
+if ([string]::IsNullOrWhiteSpace($deviceName)) {
+    [System.Windows.Forms.MessageBox]::Show(
+        "You must enter a device name to continue.",
+        "Device Name Required",
+        [System.Windows.Forms.MessageBoxButtons]::OK,
+        [System.Windows.Forms.MessageBoxIcon]::Warning
+    )
+    exit
+}
+
+# ───────────────────────────────────────────────────────────────────────
+# Step 2: Build‐Type / Builder Form
+# ───────────────────────────────────────────────────────────────────────
+# Prepare variables to hold user selections
+$buildType = $null
+$builder   = $null
+
+$form = New-Object System.Windows.Forms.Form
+$form.Text          = "Build Selector"
+$form.Size          = New-Object System.Drawing.Size(350,300)
 $form.StartPosition = "CenterScreen"
 
-# Device Name Label
+# Label: show the device name
 $labelDevice = New-Object System.Windows.Forms.Label
 $labelDevice.Text     = "Device: $deviceName"
 $labelDevice.AutoSize = $true
 $labelDevice.Location = New-Object System.Drawing.Point(20,20)
 $form.Controls.Add($labelDevice)
 
-# Label: What build type?
+# Label: "What build type?"
 $labelBuild = New-Object System.Windows.Forms.Label
 $labelBuild.Text     = "What build type?"
 $labelBuild.AutoSize = $true
@@ -50,13 +62,13 @@ $form.Controls.Add($labelBuild)
 
 # ComboBox: Build Type
 $comboBuild = New-Object System.Windows.Forms.ComboBox
-$comboBuild.Location    = New-Object System.Drawing.Point(20,90)
-$comboBuild.Size        = New-Object System.Drawing.Size(280,24)
+$comboBuild.Location     = New-Object System.Drawing.Point(20,90)
+$comboBuild.Size         = New-Object System.Drawing.Size(280,24)
 $comboBuild.DropDownStyle = 'DropDownList'
 $comboBuild.Items.AddRange(@("Standard","Shared","Kiosk","Windows 11"))
 $form.Controls.Add($comboBuild)
 
-# Label: Who is building?
+# Label: "Who is building?"
 $labelBuilder = New-Object System.Windows.Forms.Label
 $labelBuilder.Text     = "Who is building?"
 $labelBuilder.AutoSize = $true
@@ -73,30 +85,53 @@ $form.Controls.Add($comboBuilder)
 
 # Button: Start
 $button = New-Object System.Windows.Forms.Button
-$button.Location = New-Object System.Drawing.Point(20,210)
-$button.Size     = New-Object System.Drawing.Size(280,30)
-$button.Text     = "Start"
-$button.Add_Click({
-    $selectedBuild   = $comboBuild.SelectedItem
-    $selectedBuilder = $comboBuilder.SelectedItem
-
-
-    # Assign to outer‐scope variables and close form
-    $script:buildType = $selectedBuild
-    $script:builder   = $selectedBuilder
-    $form.Close()
-})
+$button.Location      = New-Object System.Drawing.Point(20,210)
+$button.Size          = New-Object System.Drawing.Size(280,30)
+$button.Text          = "Start"
+# **This is critical**: set the button’s DialogResult to OK so ShowDialog() will return OK
+$button.DialogResult  = [System.Windows.Forms.DialogResult]::OK
 $form.Controls.Add($button)
 
-# Show the form (modal) and wait for user input
-$form.Topmost = $true
-$form.Add_Shown({ $form.Activate() })
-[void]$form.ShowDialog()
+# Make this the “accept” button (activated by pressing Enter)
+$form.AcceptButton = $button
 
-# If user closed the form without clicking Start, exit
-if (-not $buildType -or -not $builder) {
-    Write-Host "No build type or builder selected. Exiting."
+# Show the form modally
+$result = $form.ShowDialog()
+
+# If the user clicked “X” or closed the window in any other way, quit
+if ($result -ne [System.Windows.Forms.DialogResult]::OK) {
+    Write-Host "User cancelled or closed the form. Exiting."
+    exit
 }
+
+# Now that ShowDialog() returned OK, read the selected items
+$buildType = $comboBuild.SelectedItem
+$builder   = $comboBuilder.SelectedItem
+
+if (-not $buildType -or -not $builder) {
+    [System.Windows.Forms.MessageBox]::Show(
+        "Please select both a build type and a builder.",
+        "Selection Required",
+        [System.Windows.Forms.MessageBoxButtons]::OK,
+        [System.Windows.Forms.MessageBoxIcon]::Warning
+    )
+    exit
+}
+
+# At this point, $buildType and $builder are guaranteed to be non‐null
+Write-Host "Selected Build Type: $buildType"
+Write-Host "Selected Builder:    $builder"
+
+# ───────────────────────────────────────────────────────────────────────
+# Step 3: (Example) Continue with Start-OSDCloud or whatever comes next
+# ───────────────────────────────────────────────────────────────────────
+# For demonstration, we’ll just print them. In your actual script, you’d
+# pass these variables to Start-OSDCloud or write out your SetupComplete.cmd, etc.
+
+# Example placeholder:
+Write-Host "Now calling Start-OSDCloud with $buildType by $builder ..."
+# Start-OSDCloud @Params  # ← your real logic goes here
+
 
 #================================================
 #   [PreOS] Hypervisor‐Specific Configuration
@@ -126,10 +161,19 @@ Start-OSDCloud @Params
 #================================================
 Write-Host -ForegroundColor Green "Copying SetupComplete dependencies..."
 Copy-Item "X:\OSDCloud\Config\Scripts\SetupComplete\Secrets.ps1" "C:\OSDCloud\Scripts\Secrets.ps1" -Force
-Copy-Item "X:\OSDCloud\Config\Scripts\SetupComplete\Get-WindowsAutoPilotInfo.ps1" "C:\OSDCloud\Scripts\Get-WindowsAutoPilotInfo.ps1" -Force
+
+
+Set-Content -Path "C:\OSDCloud\DeviceName.txt" -Value $deviceName -Force
+
+#================================================
+#  [PostOS] OOBEDeploy Configuration
+#================================================
+
+# Copy secrets into Secrets.ps1 and store on C:
+Copy-Item "X:\OSDCloud\Config\Scripts\SetupComplete\Secrets.ps1" "C:\OSDCloud\Scripts\Secrets.ps1" -Force
 
 Write-Host -ForegroundColor Green "Writing Device Name to C:\OSDCloud\DeviceName.txt"
-Set-Content -Path "C:\OSDCloud\DeviceName.txt" -Value $deviceName -Force
+Set-Content -Path "C:\OSDCloud\DeviceName.txt" -Value $deviceName
 
 #================================================
 #  [PostOS] Autopilot OOBE CMD (keep this as-is)
@@ -143,7 +187,6 @@ Start /Wait PowerShell -NoL -C Install-Module OSD -Force -Verbose
 Start /Wait PowerShell -NoL -C Invoke-WebPSScript https://check-autopilotprereq.osdcloud.ch
 Start /Wait PowerShell -NoL -C Start-OOBEDeploy
 Start /Wait PowerShell -NoL -C Invoke-WebPSScript https://tpm.osdcloud.ch
-Start /Wait PowerShell -NoL -C Invoke-WebPSScript https://cleanup.osdcloud.ch
 Start /Wait PowerShell -NoL -C Restart-Computer -Force
 '@
 $OOBECMD | Out-File -FilePath 'C:\Windows\System32\OOBE.cmd' -Encoding ascii -Force
