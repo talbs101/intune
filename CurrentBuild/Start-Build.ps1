@@ -197,6 +197,111 @@ Invoke-WebRequest -Uri $xmlUrl -OutFile $installXmlPath
 # Run the installer
 Start-Process -FilePath $localPath -ArgumentList "/configure `"$installXmlPath`"" -Wait -NoNewWindow
 
+<#
+    Install-CompanyPortal-Unattended.ps1
+
+    This script assumes it is already running elevated (SYSTEM or Administrator).
+    It will:
+      1. Enumerate all blobs under the virtual directory “Apps/Company Portal/”
+         in the intuneshared container (public‐read).
+      2. Download each blob into C:\OSDCloud\CompanyPortal.
+      3. Install CompanyPortal.appxbundle plus any .appx dependencies found under Dependencies\.
+
+    **DO NOT** use any UAC elevation prompt here—this must be fully unattended.
+#>
+
+# ----------------------------------------
+# 1) Variables: Blob container + local destination
+# ----------------------------------------
+# (no elevation check!)
+
+# Public container URL:
+$containerUrl = "https://intuneshareddata.blob.core.windows.net/intuneshared"
+
+# Virtual directory (prefix) to enumerate:
+$blobPrefix = "Apps/Company Portal/"
+
+# Local folder into which we will download everything:
+$destinationRoot = "C:\OSDCloud\CompanyPortal"
+
+# Ensure the destination folder exists
+if (-not (Test-Path -Path $destinationRoot -PathType Container)) {
+    New-Item -Path $destinationRoot -ItemType Directory -Force | Out-Null
+}
+
+
+# ----------------------------------------
+# 2) List & Download All Blobs Under That Prefix
+# ----------------------------------------
+try {
+    Write-Host "Listing blobs under prefix '$blobPrefix'..."
+    $escapedPrefix = [Uri]::EscapeDataString($blobPrefix)
+    $listUri = "$($containerUrl)?restype=container&comp=list&prefix=$escapedPrefix"
+
+    # Invoke-RestMethod returns XML
+    [xml]$xmlResponse = Invoke-RestMethod -Method GET -Uri $listUri
+
+    $blobs = $xmlResponse.EnumerationResults.Blobs.Blob
+    if (-not $blobs) {
+        Write-Warning "No blobs found under '$blobPrefix'. Exiting."
+        Exit 1
+    }
+
+    foreach ($blob in $blobs) {
+        $fullName = $blob.Name
+        # Strip off “Apps/Company Portal/” to get the relative path/filename
+        $relativePath = $fullName.Substring($blobPrefix.Length)
+
+        # Recreate any subfolders under $destinationRoot
+        $localFullPath = Join-Path $destinationRoot $relativePath
+        $localDir = Split-Path $localFullPath -Parent
+        if (-not (Test-Path -Path $localDir -PathType Container)) {
+            New-Item -Path $localDir -ItemType Directory -Force | Out-Null
+        }
+
+        # Download the blob
+        $downloadUrl = "$($containerUrl)/$($fullName)"
+        Write-Host "  ↓ Downloading '$relativePath' ..."
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $localFullPath -UseBasicParsing
+    }
+
+    Write-Host "All blobs downloaded to '$destinationRoot'."
+}
+catch {
+    Write-Error "Error listing/downloading blobs: $_"
+    Exit 1
+}
+
+
+# ----------------------------------------
+# 3) Install Company Portal & Dependencies
+# ----------------------------------------
+Write-Host "Installing Company Portal and any dependencies..."
+
+$packagePath    = Join-Path $destinationRoot "CompanyPortal.appxbundle"
+$dependencyPath = Join-Path $destinationRoot "Dependencies"
+
+# If Dependencies folder exists, collect all .appx files
+$dependencies = @()
+if (Test-Path -Path $dependencyPath -PathType Container) {
+    $dependencies = Get-ChildItem -Path $dependencyPath -Filter *.appx -File |
+                    ForEach-Object { $_.FullName }
+}
+
+try {
+    Add-AppxProvisionedPackage -Online `
+        -PackagePath $packagePath `
+        -DependencyPackagePath $dependencies `
+        -SkipLicense
+
+    Write-Host "Company Portal installation succeeded."
+}
+catch {
+    Write-Error "Failed to install Company Portal: $_"
+}
+
+Write-Host "Script completed."
+
 #=======================================================================
 #   [OS] Install Crowdstrike
 #=======================================================================
@@ -333,7 +438,6 @@ $response
 #=======================================================================
 #   [OS] Tidy Up
 #=======================================================================
-Read-Host -Prompt "Yes"
 
 Remove-Item -Path "C:\Temp" -Recurse -Force
 Write-Host -ForegroundColor DarkGray "Executing Cleanup Script"
