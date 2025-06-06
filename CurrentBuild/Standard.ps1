@@ -18,9 +18,6 @@ Start-Process PowerShell -ArgumentList "-NoL -C Install-Module AutopilotOOBE -Fo
 Write-Host -ForegroundColor DarkGray "Installing OSD PS Module"
 Start-Process PowerShell -ArgumentList "-NoL -C Install-Module OSD -Force -Verbose" -Wait
 
-Write-Host -ForegroundColor DarkGray "Executing Autopilot Check Script"
-Start-Process PowerShell -ArgumentList "-NoL -C Invoke-WebPSScript https://check-autopilotprereq.osdcloud.ch" -Wait
-
 Write-Host -ForegroundColor DarkGray "Executing OOBEDeploy Script from OSDCloud Module"
 Start-Process PowerShell -ArgumentList "-NoL -C Start-OOBEDeploy" -Wait
 
@@ -31,9 +28,6 @@ Start-Process PowerShell -ArgumentList "-NoL -C Invoke-WebPSScript https://raw.g
 Write-Host -ForegroundColor DarkGray "Unregistering Scheduled Tasks"
 Unregister-ScheduledTask -TaskName "Scheduled Task for SendKeys" -Confirm:`$false
 Unregister-ScheduledTask -TaskName "Scheduled Task for OSDCloud post installation" -Confirm:`$false
-
-Write-Host -ForegroundColor DarkGray "Restarting Computer"
-Start-Process PowerShell -ArgumentList "-NoL -C Restart-Computer -Force" -Wait
 
 Stop-Transcript -Verbose | Out-File
 "@
