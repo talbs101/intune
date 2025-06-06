@@ -22,28 +22,45 @@ $AutopilotAppSecret = $env:BUILD_AutopilotAppSecret
 
 # Read saved device name
 
-$DeviceNameFile = "C:\OSDCloud\DeviceName.txt"
-$BuildTypeFile = "C:\OSDCloud\BuildType.txt"
-$BuilderFile = "C:\OSDCloud\Builder.txt"
+$DeviceNameFile  = "C:\OSDCloud\DeviceName.txt"
+$BuildTypeFile   = "C:\OSDCloud\BuildType.txt"
+$BuilderFile     = "C:\OSDCloud\Builder.txt"
 
+#region Read DeviceName
 if (Test-Path $DeviceNameFile) {
-    $deviceName = Get-Content "C:\OSDCloud\DeviceName.txt" -Raw
-    $deviceName = $deviceName.Trim()
+    $deviceName = (Get-Content $DeviceNameFile -Raw).Trim()
 }
 else {
-    Write-Warning "DeviceName file not found. Autopilot will register with temporary name $env:computername ."
-    
+    Write-Warning "DeviceName file not found. Autopilot will register with temporary name '$env:COMPUTERNAME'."
+    $deviceName = $env:COMPUTERNAME
 }
+#endregion
 
-if (Test-Path $BuilderFile) {
-    $builderName = Get-Content "C:\OSDCloud\Builder.txt" -Raw
-    $builder= $buildName.Trim()
+#region Read BuildType
+if (Test-Path $BuildTypeFile) {
+    $buildType = (Get-Content $BuildTypeFile -Raw).Trim()
 }
 else {
-    Write-Warning "Build Type file not found."
-    $builder = "James"
-    
+    Write-Warning "BuildType file not found. Defaulting BuildType to 'Standard'."
+    $buildType = "Standard"
 }
+#endregion
+
+#region Read Builder
+if (Test-Path $BuilderFile) {
+    $builder = (Get-Content $BuilderFile -Raw).Trim()
+}
+else {
+    Write-Warning "Builder file not found. Defaulting Builder to 'James'."
+    $builder = "James"
+}
+#endregion
+
+# (Optional) Output what we ended up with:
+Write-Output "DeviceName = $deviceName"
+Write-Output "BuildType  = $buildType"
+Write-Output "Builder    = $builder"
+
 
 # ───────────────────────────────────────────────────────────────
 # Rename the computer to the device name you collected
