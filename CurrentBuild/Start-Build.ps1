@@ -247,8 +247,8 @@ import-module OSD
         
 # Define the full path to the AutoPilot script
 $autoPilotScriptPath = "C:\OSDCloud\Scripts\Get-WindowsAutoPilotInfo.ps1"
-#Get-WindowsAutopilotInfo -Online -GroupTag Standard -Assign -AssignedComputerName $deviceName
 
+# Prepare parameters for the Autopilot script
 $AutopilotParams = @{
     Online               = $true
     TenantId             = $AutopilotTenantId
@@ -259,11 +259,12 @@ $AutopilotParams = @{
     AssignedComputerName = $deviceName
 }
 
-Get-WindowsAutoPilotInfo @AutopilotParams
-
+# Invoke the script file (this will load the function and execute it)
 & $autoPilotScriptPath @AutopilotParams
 
-write-host -ForegroundColor Gray '$AutopilotRegisterCommand'" = Get-WindowsAutopilotInfo -Online -GroupTag $GroupTag -Assign -AssignedComputerName $deviceName"
+# Display the equivalent command (if you still want to log it)
+Write-Host -ForegroundColor Gray "Get-WindowsAutopilotInfo -Online -GroupTag $GroupTag -Assign -AssignedComputerName $deviceName"
+
         
         
 #=======================================================================
