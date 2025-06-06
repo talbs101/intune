@@ -439,11 +439,3 @@ $response
 #   [OS] Tidy Up
 #=======================================================================
 Remove-Item -Path "C:\Temp" -Recurse -Force
-Write-Host -ForegroundColor DarkGray "Executing Cleanup Script"
-
-
-
-
-
-
-
