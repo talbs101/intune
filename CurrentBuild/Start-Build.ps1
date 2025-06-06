@@ -244,7 +244,7 @@ try {
     $blobs = $xmlResponse.EnumerationResults.Blobs.Blob
     if (-not $blobs) {
         Write-Warning "No blobs found under '$blobPrefix'. Exiting."
-        Exit 1
+        #Exit 1
     }
 
     foreach ($blob in $blobs) {
@@ -269,7 +269,7 @@ try {
 }
 catch {
     Write-Error "Error listing/downloading blobs: $_"
-    Exit 1
+    #Exit 1
 }
 
 
