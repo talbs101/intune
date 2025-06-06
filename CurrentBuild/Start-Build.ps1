@@ -197,110 +197,142 @@ Invoke-WebRequest -Uri $xmlUrl -OutFile $installXmlPath
 # Run the installer
 Start-Process -FilePath $localPath -ArgumentList "/configure `"$installXmlPath`"" -Wait -NoNewWindow
 
+#=======================================================================
+#   [OS] Install Company Portal
+#=======================================================================
 <#
-    Install-CompanyPortal-Unattended.ps1
+    Install-CompanyPortal-OneByOne.ps1
 
-    This script assumes it is already running elevated (SYSTEM or Administrator).
-    It will:
-      1. Enumerate all blobs under the virtual directory “Apps/Company Portal/”
-         in the intuneshared container (public‐read).
-      2. Download each blob into C:\OSDCloud\CompanyPortal.
-      3. Install CompanyPortal.appxbundle plus any .appx dependencies found under Dependencies\.
+    • Assumes it is already running with full Administrator (or SYSTEM) rights.
+    • Downloads each file listed below from:
+         https://intuneshareddata.blob.core.windows.net/intuneshared/apps/company-portal/
+      into C:\OSDCloud\CompanyPortal\[subfolders…]
+    • Then installs CompanyPortal.appxbundle + all *.appx dependencies.
 
-    **DO NOT** use any UAC elevation prompt here—this must be fully unattended.
+    USAGE (unattended/OOBE):
+      1. Copy this .ps1 onto your WinPE/MDT/SCCM share or local image.
+      2. In your Task Sequence (MDT/SCCM), add a step:
+         "Run PowerShell Script" → point at this file, Execution Policy = Bypass.
+      3. Make sure the TS step runs as SYSTEM (default) or an already-elevated Admin.
+      4. No UAC‐elevation code remains in this file—fully silent/unattended.
 #>
 
 # ----------------------------------------
-# 1) Variables: Blob container + local destination
+# 1) VARIABLES
 # ----------------------------------------
-# (no elevation check!)
 
-# Public container URL:
-$containerUrl = "https://intuneshareddata.blob.core.windows.net/intuneshared"
+# Base URL for every file
+$baseUrl = "https://intuneshareddata.blob.core.windows.net/intuneshared/Apps/Company-Portal"
 
-# Virtual directory (prefix) to enumerate:
-$blobPrefix = "Apps/Company Portal/"
-
-# Local folder into which we will download everything:
+# Local folder where we want to drop everything
 $destinationRoot = "C:\OSDCloud\CompanyPortal"
 
-# Ensure the destination folder exists
+# A hard‐coded list of all blob‐paths (relative to the container root “apps/company-portal/”):
+#   – Root-level:                                “CompanyPortal.appxbundle”
+#   – Dependencies folder:                       “Dependencies/<filename>”
+#
+# NOTE: Adjust any filenames here if yours differ slightly.
+$allFiles = @(
+    # 1) The main bundle:
+    "CompanyPortal.appxbundle",
+    "install.ps1",
+
+    # 2) Under Dependencies\:
+    "Dependencies/AUMIDs.txt",
+    "Dependencies/MPAP_c797dbb4414543f59d35e59e5225824e_001.provxml",
+    "Dependencies/Microsoft.NET.Native.Framework.2.2_2.2.29512.0_x64__8wekyb3d8bbwe.appx",
+    "Dependencies/Microsoft.NET.Native.Runtime.2.2_2.2.28604.0_x64__8wekyb3d8bbwe.appx",
+    "Dependencies/Microsoft.Services.Store.Engagement_10.0.23012.0_x64__8wekyb3d8bbwe.appx",
+    "Dependencies/Microsoft.UI.Xaml.2.7_7.2409.9001.0_x64__8wekyb3d8bbwe.appx",
+    "Dependencies/Microsoft.VCLibs.140.00_14.0.33519.0_x64__8wekyb3d8bbwe.appx",
+    "Dependencies/c797dbb4414543f59d35e59e5225824e_License1.xml"
+)
+
+# ----------------------------------------
+# 2) ENSURE DESTINATION FOLDER EXISTS
+# ----------------------------------------
 if (-not (Test-Path -Path $destinationRoot -PathType Container)) {
+    Write-Host "Creating folder: $destinationRoot"
     New-Item -Path $destinationRoot -ItemType Directory -Force | Out-Null
 }
-
-
 # ----------------------------------------
-# 2) List & Download All Blobs Under That Prefix
+# 3) DOWNLOAD EACH FILE ONE-BY-ONE
 # ----------------------------------------
-try {
-    Write-Host "Listing blobs under prefix '$blobPrefix'..."
-    $escapedPrefix = [Uri]::EscapeDataString($blobPrefix)
-    $listUri = "$($containerUrl)?restype=container&comp=list&prefix=$escapedPrefix"
+foreach ($relativePath in $allFiles) {
+    # 3a) Build the full URL (no spaces → no %20 needed here)
+    $fileUrl = "$baseUrl/$relativePath"
 
-    # Invoke-RestMethod returns XML
-    [xml]$xmlResponse = Invoke-RestMethod -Method GET -Uri $listUri
+    # 3b) Build the local path where we’ll save it
+    $localFullPath = Join-Path $destinationRoot $relativePath
+    $localDir      = Split-Path $localFullPath -Parent
 
-    $blobs = $xmlResponse.EnumerationResults.Blobs.Blob
-    if (-not $blobs) {
-        Write-Warning "No blobs found under '$blobPrefix'. Exiting."
-        #Exit 1
+    # 3c) Create subfolder if it doesn't exist
+    if (-not (Test-Path -Path $localDir -PathType Container)) {
+        Write-Host " → Creating subfolder: $localDir"
+        New-Item -Path $localDir -ItemType Directory -Force | Out-Null
     }
 
-    foreach ($blob in $blobs) {
-        $fullName = $blob.Name
-        # Strip off “Apps/Company Portal/” to get the relative path/filename
-        $relativePath = $fullName.Substring($blobPrefix.Length)
-
-        # Recreate any subfolders under $destinationRoot
-        $localFullPath = Join-Path $destinationRoot $relativePath
-        $localDir = Split-Path $localFullPath -Parent
-        if (-not (Test-Path -Path $localDir -PathType Container)) {
-            New-Item -Path $localDir -ItemType Directory -Force | Out-Null
+    # 3d) Download only if it’s not already present, or if you want to overwrite, you can remove the -ErrorAction check
+    if (-not (Test-Path -Path $localFullPath -PathType Leaf)) {
+        Write-Host " ↓ Downloading: $relativePath"
+        try {
+            Invoke-WebRequest -Uri $fileUrl -OutFile $localFullPath -UseBasicParsing -ErrorAction Stop
         }
-
-        # Download the blob
-        $downloadUrl = "$($containerUrl)/$($fullName)"
-        Write-Host "  ↓ Downloading '$relativePath' ..."
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $localFullPath -UseBasicParsing
+        catch {
+            Write-Error "   !! Failed to download '$relativePath' from '$fileUrl': $_"
+            Exit 1
+        }
     }
+    else {
+        Write-Host "   (Already exists) Skipping: $relativePath"
+    }
+}
 
-    Write-Host "All blobs downloaded to '$destinationRoot'."
+Write-Host ""
+Write-Host "✔ All requested files have been downloaded into '$destinationRoot'."
+Write-Host ""
+
+# ----------------------------------------
+# 4) INSTALL THE COMPANY PORTAL APPX BUNDLE + DEPENDENCIES
+# ----------------------------------------
+Write-Host "Installing CompanyPortal.appxbundle + dependencies..."
+
+# 4a) Path to main bundle
+$bundlePath = Join-Path $destinationRoot "CompanyPortal.appxbundle"
+
+# 4b) Path to Dependencies folder
+$dependencyFolder = Join-Path $destinationRoot "Dependencies"
+
+# 4c) Verify the bundle is present
+if (-not (Test-Path -Path $bundlePath -PathType Leaf)) {
+    Write-Error "CompanyPortal.appxbundle not found at '$bundlePath'. Cannot proceed."
+    Exit 1
+}
+
+# 4d) Gather all *.appx in Dependencies\
+$dependencyAppxFiles = @()
+if (Test-Path -Path $dependencyFolder -PathType Container) {
+    $dependencyAppxFiles = Get-ChildItem -Path $dependencyFolder -Filter *.appx -File |
+                           ForEach-Object { $_.FullName }
+}
+
+# 4e) Run Add-AppxProvisionedPackage
+try {
+    Add-AppxProvisionedPackage -Online `
+        -PackagePath $bundlePath `
+        -DependencyPackagePath $dependencyAppxFiles `
+        -SkipLicense
+
+    Write-Host "✔ Company Portal installation succeeded."
 }
 catch {
-    Write-Error "Error listing/downloading blobs: $_"
+    Write-Error "   !! Failed to install Company Portal: $_"
     #Exit 1
 }
 
-
-# ----------------------------------------
-# 3) Install Company Portal & Dependencies
-# ----------------------------------------
-Write-Host "Installing Company Portal and any dependencies..."
-
-$packagePath    = Join-Path $destinationRoot "CompanyPortal.appxbundle"
-$dependencyPath = Join-Path $destinationRoot "Dependencies"
-
-# If Dependencies folder exists, collect all .appx files
-$dependencies = @()
-if (Test-Path -Path $dependencyPath -PathType Container) {
-    $dependencies = Get-ChildItem -Path $dependencyPath -Filter *.appx -File |
-                    ForEach-Object { $_.FullName }
-}
-
-try {
-    Add-AppxProvisionedPackage -Online `
-        -PackagePath $packagePath `
-        -DependencyPackagePath $dependencies `
-        -SkipLicense
-
-    Write-Host "Company Portal installation succeeded."
-}
-catch {
-    Write-Error "Failed to install Company Portal: $_"
-}
-
-Write-Host "Script completed."
+Write-Host ""
+Write-Host "All done. Exiting."
+#Exit 0
 
 #=======================================================================
 #   [OS] Install Crowdstrike
