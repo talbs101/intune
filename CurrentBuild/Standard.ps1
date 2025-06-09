@@ -18,16 +18,25 @@ Start-Process PowerShell -ArgumentList "-NoL -C Install-Module AutopilotOOBE -Fo
 Write-Host -ForegroundColor DarkGray "Installing OSD PS Module"
 Start-Process PowerShell -ArgumentList "-NoL -C Install-Module OSD -Force -Verbose" -Wait
 
-Write-Host -ForegroundColor DarkGray "Executing OOBEDeploy Script from OSDCloud Module"
+Write-Host -ForegroundColor DarkGray "Executing Autopilot Check Script"
+Start-Process PowerShell -ArgumentList "-NoL -C Invoke-WebPSScript https://check-autopilotprereq.osdcloud.ch" -Wait
+
+Write-Host -ForegroundColor DarkGray "Executing OOBEDeploy Script fomr OSDCloud Module"
 Start-Process PowerShell -ArgumentList "-NoL -C Start-OOBEDeploy" -Wait
 
-Write-Host -ForegroundColor DarkGray "Running Start-Build.ps1 from Repo"
+Write-Host -ForegroundColor DarkGray "Installing Windows Updates"
 Start-Process PowerShell -ArgumentList "-NoL -C Invoke-WebPSScript https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Start-Build.ps1" -Wait
+
+Write-Host -ForegroundColor DarkGray "Executing Cleanup Script"
+Start-Process PowerShell -ArgumentList "-NoL -C Invoke-WebPSScript https://cleanup.osdcloud.ch" -Wait
 
 # Cleanup scheduled Tasks
 Write-Host -ForegroundColor DarkGray "Unregistering Scheduled Tasks"
 Unregister-ScheduledTask -TaskName "Scheduled Task for SendKeys" -Confirm:`$false
 Unregister-ScheduledTask -TaskName "Scheduled Task for OSDCloud post installation" -Confirm:`$false
+
+Write-Host -ForegroundColor DarkGray "Restarting Computer"
+Start-Process PowerShell -ArgumentList "-NoL -C Restart-Computer -Force" -Wait
 
 Stop-Transcript -Verbose | Out-File
 "@
