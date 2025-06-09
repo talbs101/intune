@@ -4,7 +4,6 @@
 
 $secretsFile = 'C:\OSDCloud\Scripts\Secrets.ps1'
 . $secretsFile
-
 # ──────────────────────────────────────────────────────
 # 2️⃣ Assign your “parameters” from the environment
 # ──────────────────────────────────────────────────────
@@ -17,12 +16,12 @@ $LogicAppUrl        = $env:BUILD_LogicAppUrl
 $AutopilotTenantId  = $env:BUILD_AutopilotTenantId
 $AutopilotAppId     = $env:BUILD_AutopilotAppId
 $AutopilotAppSecret = $env:BUILD_AutopilotAppSecret
-
 #=======================================================================
 #   [OS] Get Computer Name
 #=======================================================================
 
 # Read saved device name
+
 $DeviceNameFile  = "C:\OSDCloud\DeviceName.txt"
 $BuildTypeFile   = "C:\OSDCloud\BuildType.txt"
 $BuilderFile     = "C:\OSDCloud\Builder.txt"
@@ -62,6 +61,7 @@ Write-Output "DeviceName = $deviceName"
 Write-Output "BuildType  = $buildType"
 Write-Output "Builder    = $builder"
 
+
 # ───────────────────────────────────────────────────────────────
 # Rename the computer to the device name you collected
 # ───────────────────────────────────────────────────────────────
@@ -71,6 +71,7 @@ if (-not [string]::IsNullOrWhiteSpace($deviceName)) {
     try {
         Rename-Computer -NewName $deviceName -Force -PassThru | Write-Host
         Write-Host -ForegroundColor Green "Rename queued. Waiting for restart to apply new name..."
+        
     }
     catch {
         Write-Warning "Failed to rename computer: $_"
@@ -80,6 +81,8 @@ else {
     Write-Warning "No deviceName provided; skipping rename."
 }
 
+
+
 #=======================================================================
 #   [OS] Decrypt BitLocker
 #=======================================================================
@@ -87,6 +90,7 @@ else {
 # Decrypting no matter the current status so that Intune policy enforces Encryption to 256bit strength
 Write-Host -ForegroundColor Green "Decrypting BitLocker"
 Manage-bde -off C: 
+    
 
 #=======================================================================
 #   [OS] Enable Location Services
@@ -106,6 +110,7 @@ if (-not (Test-Path $registryPath)) {
 # Set the registry value
 Set-ItemProperty -Path $registryPath -Name "Value" -Type String -Value "Allow" 
 
+
 #=======================================================================
 #   [OS] Install Windows Updates
 #=======================================================================
@@ -122,6 +127,7 @@ if (!(Get-Module PSWindowsUpdate -ListAvailable)) {
     catch {
         Write-Warning 'Unable to install PSWindowsUpdate PowerShell Module'
         $UpdateWindows = $false
+           
     }
 }
 
@@ -132,14 +138,18 @@ if ($UpdateWindows) {
     Write-Host -ForegroundColor DarkCyan 'Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -IgnoreReboot'
     #Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -IgnoreReboot -NotTitle 'Malicious'
 }
+   
+
 
 #=======================================================================
 #   [OS] Install SimpleHelp
 #=======================================================================
 
+
 Write-Host -ForegroundColor Green "Installing SimpleHelp from Azure"
 # Check if SimpleHelp is already installed
 
+       
 # Define download URL
 $blobUrl = $SimpleHelpUrl
 
@@ -160,6 +170,7 @@ $installArgs = @("/S", "/NAME=AUTODETECT", "/HOST=https://sh.stmonicatrust.org.u
 # Run the installer
 Start-Process -FilePath $downloadPath -ArgumentList $installArgs -Wait -NoNewWindow
 
+
 #=======================================================================
 #   [OS] Install Office 365
 #=======================================================================
@@ -167,13 +178,13 @@ Start-Process -FilePath $downloadPath -ArgumentList $installArgs -Wait -NoNewWin
 Write-Host -ForegroundColor Green "Installing Office 365 from Azure"
 
 # Variables
-$blobUrl         = $Office365Url
-$localPath       = "C:\Temp\setup.exe"
-$installXmlPath  = "C:\Temp\install.xml"
+$blobUrl = $Office365Url
+$localPath = "C:\Temp\setup.exe"
+$installXmlPath = "C:\Temp\install.xml"
 
 # Create download directory if it doesn't exist
 if (-not (Test-Path "C:\Temp")) {
-    New-Item -Path "C:\Temp" -ItemType Directory | Out-Null
+    New-Item -Path "C:\Temp" -ItemType Directory
 }
 
 # Download setup.exe from Azure Blob
@@ -183,31 +194,12 @@ Invoke-WebRequest -Uri $blobUrl -OutFile $localPath
 $xmlUrl = $Office365XMLUrl
 Invoke-WebRequest -Uri $xmlUrl -OutFile $installXmlPath
 
-# Run the installer (avoid stray backtick errors by passing an array)
-Write-Host -ForegroundColor Green "Launching Office 365 installer..."
-$arg1 = "/configure"
-$arg2 = """$installXmlPath"""    # results in a quoted path: "C:\Temp\install.xml"
-Start-Process -FilePath $localPath -ArgumentList $arg1, $arg2 -Wait -NoNewWindow
+# Run the installer
+Start-Process -FilePath $localPath -ArgumentList "/configure `"$installXmlPath`"" -Wait -NoNewWindow
 
 #=======================================================================
 #   [OS] Install Company Portal
 #=======================================================================
-<#
-    Install-CompanyPortal-OneByOne.ps1
-
-    • Assumes it is already running with full Administrator (or SYSTEM) rights.
-    • Downloads each file listed below from:
-         https://intuneshareddata.blob.core.windows.net/intuneshared/apps/company-portal/
-      into C:\OSDCloud\CompanyPortal\[subfolders…]
-    • Then installs CompanyPortal.appxbundle + all *.appx dependencies.
-
-    USAGE (unattended/OOBE):
-      1. Copy this .ps1 onto your WinPE/MDT/SCCM share or local image.
-      2. In your Task Sequence (MDT/SCCM), add a step:
-         "Run PowerShell Script" → point at this file, Execution Policy = Bypass.
-      3. Make sure the TS step runs as SYSTEM (default) or an already-elevated Admin.
-      4. No UAC‐elevation code remains in this file—fully silent/unattended.
-#>
 
 # ----------------------------------------
 # 1) VARIABLES
@@ -222,6 +214,8 @@ $destinationRoot = "C:\OSDCloud\CompanyPortal"
 # A hard‐coded list of all blob‐paths (relative to the container root “apps/company-portal/”):
 #   – Root-level:                                “CompanyPortal.appxbundle”
 #   – Dependencies folder:                       “Dependencies/<filename>”
+#
+# NOTE: Adjust any filenames here if yours differ slightly.
 $allFiles = @(
     # 1) The main bundle:
     "CompanyPortal.appxbundle",
@@ -245,25 +239,24 @@ if (-not (Test-Path -Path $destinationRoot -PathType Container)) {
     Write-Host "Creating folder: $destinationRoot"
     New-Item -Path $destinationRoot -ItemType Directory -Force | Out-Null
 }
-
 # ----------------------------------------
 # 3) DOWNLOAD EACH FILE ONE-BY-ONE
 # ----------------------------------------
 foreach ($relativePath in $allFiles) {
     # 3a) Build the full URL (no spaces → no %20 needed here)
-    $fileUrl      = "$baseUrl/$relativePath"
+    $fileUrl = "$baseUrl/$relativePath"
 
     # 3b) Build the local path where we’ll save it
     $localFullPath = Join-Path $destinationRoot $relativePath
     $localDir      = Split-Path $localFullPath -Parent
 
-    # 3c) Create subfolder if it doesn’t exist
+    # 3c) Create subfolder if it doesn't exist
     if (-not (Test-Path -Path $localDir -PathType Container)) {
         Write-Host " → Creating subfolder: $localDir"
         New-Item -Path $localDir -ItemType Directory -Force | Out-Null
     }
 
-    # 3d) Download only if it’s not already present
+    # 3d) Download only if it’s not already present, or if you want to overwrite, you can remove the -ErrorAction check
     if (-not (Test-Path -Path $localFullPath -PathType Leaf)) {
         Write-Host " ↓ Downloading: $relativePath"
         try {
@@ -318,55 +311,61 @@ try {
 }
 catch {
     Write-Error "   !! Failed to install Company Portal: $_"
-    # Exit 1
+    #Exit 1
 }
 
 Write-Host ""
 Write-Host "All done. Exiting."
-# Exit 0
+#Exit 0
 
 #=======================================================================
-#   [OS] Install CrowdStrike
+#   [OS] Install Crowdstrike
 #=======================================================================
           
-Write-Host -ForegroundColor Green "Installing CrowdStrike Sensor from Azure"
+Write-Host -ForegroundColor Green "Installing Crowdstrike Sensor from Azure"
 
 # Variables
-$blobUrl   = $CrowdStrikeUrl
+$blobUrl = $CrowdstrikeUrl
 $localPath = "C:\Temp\FalconSensor_Windows.exe"
 
-# Create download directory if it doesn’t exist
+# Create download directory if it doesn't exist
 if (-not (Test-Path "C:\Temp")) {
-    New-Item -Path "C:\Temp" -ItemType Directory | Out-Null
+    New-Item -Path "C:\Temp" -ItemType Directory
 }
 
 # Download setup.exe from Azure Blob
 Invoke-WebRequest -Uri $blobUrl -OutFile $localPath
 
+
 # Run the installer
-Start-Process -FilePath $localPath -ArgumentList "/install", "/quiet", "/norestart", "/CID=$CrowdStrikeSecret" -Wait -NoNewWindow
+Start-Process -FilePath $localPath -ArgumentList "/install /quiet /norestart /CID=$CrowdStrikeSecret" -Wait -NoNewWindow
+
+       
 
 #=======================================================================
 #   [OS] Enroll in Autopilot
 #=======================================================================
-          
+
 # Read Build Type and Builder
+
 $BuildType = "C:\OSDCloud\BuildType.txt"
 
 if (Test-Path $BuildType) {
     $GroupTagName = Get-Content "C:\OSDCloud\BuildType.txt" -Raw
-    $GroupTag     = $GroupTagName.Trim()
+    $GroupTag = $GroupTagName.Trim()
 }
 else {
-    Write-Warning "Build Type file not found. Autopilot will register with Standard Group Tag."
+    Write-Warning "Build Type file not found. Autopilot will register with Standard Group Tag ."
     $GroupTag = "Standard"
+        
 }
 
 Write-Host -ForegroundColor Green "Starting Autopilot Registration"
-
+        
 import-module OSD 
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        
 # Define the full path to the AutoPilot script
 $autoPilotScriptPath = "C:\OSDCloud\Scripts\Get-WindowsAutoPilotInfo.ps1"
 
@@ -387,11 +386,15 @@ $AutopilotParams = @{
 # Display the equivalent command (if you still want to log it)
 Write-Host -ForegroundColor Gray "Get-WindowsAutopilotInfo -Online -GroupTag $GroupTag -Assign -AssignedComputerName $deviceName"
 
+        
+        
 #=======================================================================
 #   [OS] Start Logic App
 #=======================================================================
 
 Write-Host -ForegroundColor Green "Starting Logic App for Whitelisting and Updating Jira"
+
+# Send WebRequest to Logic App (IntuneDevices)
 
 # Get the RAM and CPU Information and stick it in variables to pass to Logic App
 
@@ -406,36 +409,33 @@ $disksize = Get-CimInstance Win32_DiskDrive | ForEach-Object {
     "{0} GB" -f ([math]::Round($_.Size / 1GB, 2))
 }
 
-$model  = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
+$model = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
+
 $serial = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
 
+
 # Get the MAC address of the Wi-Fi adapter
-$wifiAdapter = Get-NetAdapter | Where-Object { $_.Name -match "Wi-?Fi" }
-if ($wifiAdapter) {
-    $wifiMac = $wifiAdapter.MacAddress
-}
-else {
-    Write-Warning "Wi-Fi adapter not found; MAC address will be empty."
-    $wifiMac = ""
-}
+$wifiMac = (Get-NetAdapter -Name WiFi | Select-Object -ExpandProperty MacAddress)
 
 # Display the MAC address without the dash
 $wifiMacWithoutDash = $wifiMac -replace '-', ''
+
 Write-Host "Wi-Fi MAC Address: $wifiMacWithoutDash"
+
 
 # Your Logic App HTTP trigger URL
 $logicAppUrl = $LogicAppUrl
 
-# Payload to send
+# Payload to send (can be empty if your Logic App doesn’t expect a body)
 $payload = @{
     wifimac    = $wifiMacWithoutDash
     email      = "james.talbot@stmonicatrust.org.uk"
     deviceName = $deviceName
-    cpuname    = $cpuname
-    ram        = $ram
-    disksize   = $disksize
-    model      = $model
-    serial     = $serial
+    cpuname = $cpuname
+    ram = $ram
+    disksize = $disksize
+    model = $model
+    serial = $serial
 } | ConvertTo-Json -Depth 3
 
 # Optional headers
@@ -449,6 +449,8 @@ $response = Invoke-RestMethod -Uri $logicAppUrl -Method Post -Body $payload -Hea
 # Output response
 $response
 
+
+          
 #=======================================================================
 #   [OS] Tidy Up
 #=======================================================================
