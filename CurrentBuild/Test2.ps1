@@ -58,9 +58,9 @@ $baseUrl = "https://intuneshareddata.blob.core.windows.net/intuneshared/Apps/Com
 # Local folder where we want to drop everything
 $destinationRoot = "C:\OSDCloud\CompanyPortal"
 
-# A hard‐coded list of all blob‐paths (relative to the container root “apps/company-portal/”):
-#   – Root-level:                                “CompanyPortal.appxbundle”
-#   – Dependencies folder:                       “Dependencies/<filename>”
+# A hard‐coded list of all blob‐paths (relative to the container root "apps/company-portal/"):
+#   – Root-level:                                "CompanyPortal.appxbundle"
+#   – Dependencies folder:                       "Dependencies/<filename>"
 #
 # NOTE: Adjust any filenames here if yours differ slightly.
 $allFiles = @(
@@ -86,6 +86,7 @@ if (-not (Test-Path -Path $destinationRoot -PathType Container)) {
     Write-Host "Creating folder: $destinationRoot"
     New-Item -Path $destinationRoot -ItemType Directory -Force | Out-Null
 }
+
 # ----------------------------------------
 # 3) DOWNLOAD EACH FILE ONE-BY-ONE
 # ----------------------------------------
@@ -103,7 +104,7 @@ foreach ($relativePath in $allFiles) {
         New-Item -Path $localDir -ItemType Directory -Force | Out-Null
     }
 
-    # 3d) Download only if it’s not already present, or if you want to overwrite, you can remove the -ErrorAction check
+    # 3d) Download only if it’s not already present
     if (-not (Test-Path -Path $localFullPath -PathType Leaf)) {
         Write-Host " ↓ Downloading: $relativePath"
         try {
@@ -111,7 +112,6 @@ foreach ($relativePath in $allFiles) {
         }
         catch {
             Write-Error "   !! Failed to download '$relativePath' from '$fileUrl': $_"
-            #Exit 1
         }
     }
     else {
@@ -137,7 +137,6 @@ $dependencyFolder = Join-Path $destinationRoot "Dependencies"
 # 4c) Verify the bundle is present
 if (-not (Test-Path -Path $bundlePath -PathType Leaf)) {
     Write-Error "CompanyPortal.appxbundle not found at '$bundlePath'. Cannot proceed."
-    #Exit 1
 }
 
 # 4d) Gather all *.appx in Dependencies\
@@ -147,23 +146,23 @@ if (Test-Path -Path $dependencyFolder -PathType Container) {
                            ForEach-Object { $_.FullName }
 }
 
-# 4e) Run Add-AppxProvisionedPackage
-try {
-    Add-AppxProvisionedPackage -Online `
-        -PackagePath $bundlePath `
-        -DependencyPackagePath $dependencyAppxFiles `
-        -SkipLicense
+# 4e) Run Add-AppxProvisionedPackage with splatting (no backticks)
+$installParams = @{
+    Online                  = $true
+    PackagePath             = $bundlePath
+    DependencyPackagePath   = $dependencyAppxFiles
+    SkipLicense             = $true
+}
 
+try {
+    Add-AppxProvisionedPackage @installParams
     Write-Host "✔ Company Portal installation succeeded."
 }
 catch {
-    Write-Error "   !! Failed to install Company Portal: $_"
-    #Exit 1
+    Write-Error "Failed to install Company Portal: $_"
 }
 
-Write-Host ""
-Write-Host "All done. Exiting."
-#Exit 0
+
 
 
 
