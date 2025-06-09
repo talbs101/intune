@@ -32,21 +32,16 @@ $BuilderFile     = "C:\OSDCloud\Builder.txt"
 # Rename the computer to the device name you collected
 # ───────────────────────────────────────────────────────────────
 
-if (-not [string]::IsNullOrWhiteSpace($deviceName)) {
-    Write-Host -ForegroundColor Green "Renaming computer to '$deviceName'..."
-    try {
-        Rename-Computer -NewName $deviceName -Force -PassThru | Write-Host
-        Write-Host -ForegroundColor Green "Rename queued. Waiting for restart to apply new name..."
-        
-    }
-    catch {
-        Write-Warning "Failed to rename computer: $_"
-    }
+$DeviceNameFile = "C:\OSDCloud\DeviceName.txt"
+
+if (Test-Path $DeviceNameFile) {
+    $deviceName = Get-Content "C:\OSDCloud\DeviceName.txt" -Raw
+    $deviceName = $deviceName.Trim()
 }
 else {
-    Write-Warning "No deviceName provided; skipping rename."
+    Write-Warning "DeviceName file not found. Autopilot will register with temporary name $env:computername ."
+    
 }
-
 
 
 #=======================================================================
@@ -75,37 +70,6 @@ if (-not (Test-Path $registryPath)) {
 
 # Set the registry value
 Set-ItemProperty -Path $registryPath -Name "Value" -Type String -Value "Allow" 
-
-
-#=======================================================================
-#   [OS] Install Windows Updates
-#=======================================================================
-    
-Write-Host -ForegroundColor Green "Installing Windows Updates"
-    
-# How To: Update Windows using the PSWindowsUpdate Module
-
-$UpdateWindows = $false
-if (!(Get-Module PSWindowsUpdate -ListAvailable)) {
-    try {
-        Install-Module PSWindowsUpdate -Force
-    }
-    catch {
-        Write-Warning 'Unable to install PSWindowsUpdate PowerShell Module'
-        $UpdateWindows = $false
-           
-    }
-}
-
-if ($UpdateWindows) {
-    Write-Host -ForegroundColor DarkCyan 'Add-WUServiceManager -MicrosoftUpdate -Confirm:$false'
-    Add-WUServiceManager -MicrosoftUpdate -Confirm:$false
-
-    Write-Host -ForegroundColor DarkCyan 'Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -IgnoreReboot'
-    #Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -IgnoreReboot -NotTitle 'Malicious'
-}
-   
-
 
 #=======================================================================
 #   [OS] Install SimpleHelp
@@ -230,7 +194,7 @@ foreach ($relativePath in $allFiles) {
         }
         catch {
             Write-Error "   !! Failed to download '$relativePath' from '$fileUrl': $_"
-            Exit 1
+            #Exit 1
         }
     }
     else {
