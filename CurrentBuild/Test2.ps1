@@ -43,7 +43,6 @@ else {
     
 }
 
-
 #=======================================================================
 #   [OS] Install Company Portal
 #=======================================================================
@@ -146,7 +145,7 @@ if (Test-Path -Path $dependencyFolder -PathType Container) {
                            ForEach-Object { $_.FullName }
 }
 
-# 4e) Run Add-AppxProvisionedPackage with splatting (no backticks)
+# 4e) Run Add-AppxProvisionedPackage via splatting (no backticks)
 $installParams = @{
     Online                  = $true
     PackagePath             = $bundlePath
@@ -161,7 +160,6 @@ try {
 catch {
     Write-Error "Failed to install Company Portal: $_"
 }
-
 
 
 
