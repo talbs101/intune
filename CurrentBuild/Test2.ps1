@@ -106,12 +106,8 @@ foreach ($relativePath in $allFiles) {
     # 3d) Download only if it’s not already present
     if (-not (Test-Path -Path $localFullPath -PathType Leaf)) {
         Write-Host " ↓ Downloading: $relativePath"
-        try {
+    
             Invoke-WebRequest -Uri $fileUrl -OutFile $localFullPath -UseBasicParsing -ErrorAction Stop
-        }
-        catch {
-            Write-Error "   !! Failed to download '$relativePath' from '$fileUrl': $_"
-        }
     }
     else {
         Write-Host "   (Already exists) Skipping: $relativePath"
