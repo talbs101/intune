@@ -131,6 +131,7 @@ Start-Process -FilePath $localPath -ArgumentList "/configure `"$installXmlPath`"
 #   [OS] Install Company Portal
 #=======================================================================
 
+Write-Host -ForegroundColor Green "Installing Company Portal"
 $packagePath    = "C:\OSDCloud\CompanyPortal\CompanyPortal.appxbundle"
 $dependencyPath = "C:\OSDCloud\CompanyPortal\Dependencies"
 $dependencies   = Get-ChildItem -Path $dependencyPath -Filter *.appx | ForEach-Object { $_.FullName }
