@@ -163,6 +163,43 @@ Write-Host -ForegroundColor Green "Copying SetupComplete dependencies..."
 Copy-Item "X:\OSDCloud\Config\Scripts\SetupComplete\Secrets.ps1" "C:\OSDCloud\Scripts\Secrets.ps1" -Force
 Copy-Item "X:\OSDCloud\Config\Scripts\SetupComplete\Get-WindowsAutoPilotInfo.ps1" "C:\OSDCloud\Scripts\Get-WindowsAutoPilotInfo.ps1" -Force
 
+# Copy CompanyPortal files
+
+# source & destination roots
+$sourceRoot      = "X:\OSDCloud\Config\Scripts\SetupComplete\Apps\CompanyPortal"
+$destinationRoot = "C:\OSDCloud\CompanyPortal"
+
+# all files, *including* their relative paths under Dependencies
+$filesToCopy = @(
+  "CompanyPortal.appxbundle",
+  "Dependencies\AUMIDs.txt",
+  "Dependencies\c797dbb4414543f59d35e59e5225824e_License1.xml",
+  "Dependencies\MPAP_c797dbb4414543f59d35e59e5225824e_001.provxml",
+  "Dependencies\Microsoft.NET.Native.Framework.2.2_2.2.29512.0_x64__8wekyb3d8bbwe.appx",
+  "Dependencies\Microsoft.NET.Native.Runtime.2.2_2.2.28604.0_x64__8wekyb3d8bbwe.appx",
+  "Dependencies\Microsoft.Services.Store.Engagement_10.0.23012.0_x64__8wekyb3d8bbwe.appx",
+  "Dependencies\Microsoft.UI.Xaml.2.7_7.2409.9001.0_x64__8wekyb3d8bbwe.appx",
+  "Dependencies\Microsoft.VCLibs.140.00_14.0.33519.0_x64__8wekyb3d8bbwe.appx"
+)
+
+foreach ($rel in $filesToCopy) {
+    # build full paths
+    $src  = Join-Path $sourceRoot      $rel
+    $dest = Join-Path $destinationRoot $rel
+
+    # ensure destination folder exists
+    $destDir = Split-Path $dest -Parent
+    if (-not (Test-Path $destDir)) {
+        New-Item -Path $destDir -ItemType Directory -Force | Out-Null
+    }
+
+    # copy
+    Write-Host "Copying `"$src`" → `"$dest`""
+    Copy-Item -Path $src -Destination $dest -Force
+}
+
+Write-Host "All files copied." 
+
 
 Set-Content -Path "C:\OSDCloud\DeviceName.txt" -Value $deviceName -Force
 Set-Content -Path "C:\OSDCloud\BuildType.txt" -Value $buildType -Force
