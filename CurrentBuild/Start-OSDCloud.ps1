@@ -65,7 +65,7 @@ $comboBuild = New-Object System.Windows.Forms.ComboBox
 $comboBuild.Location     = New-Object System.Drawing.Point(20,90)
 $comboBuild.Size         = New-Object System.Drawing.Size(280,24)
 $comboBuild.DropDownStyle = 'DropDownList'
-$comboBuild.Items.AddRange(@("Standard","Shared","Kiosk","Windows 11"))
+$comboBuild.Items.AddRange(@("Standard","Shared","Kiosk","Windows 11", "Rebuild-Standard", "Rebuild-Shared"))
 $form.Controls.Add($comboBuild)
 
 # Label: "Who is building?"
