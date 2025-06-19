@@ -227,6 +227,7 @@ Start /Wait PowerShell -NoL -C Install-Module OSD -Force -Verbose
 Start /Wait PowerShell -NoL -C Invoke-WebPSScript https://check-autopilotprereq.osdcloud.ch
 Start /Wait PowerShell -NoL -C Start-OOBEDeploy
 Start /Wait PowerShell -NoL -C Invoke-WebPSScript https://tpm.osdcloud.ch
+Start /Wait PowerShell -NoL -C Invoke-WebPSScript https://cleanup.osdcloud.ch
 Start /Wait PowerShell -NoL -C Restart-Computer -Force
 '@
 $OOBECMD | Out-File -FilePath 'C:\Windows\System32\OOBE.cmd' -Encoding ascii -Force
@@ -239,7 +240,7 @@ Write-Host -ForegroundColor Green "Create C:\Windows\Setup\Scripts\SetupComplete
 $SetupCompleteCMD = @'
 powershell.exe -Command Set-ExecutionPolicy RemoteSigned -Force
 powershell.exe -Command "& {IEX (IRM https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/CompanyPortal.ps1)}"
-powershell.exe -Command "& {IEX (IRM https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Standard.ps1)}"
+powershell.exe -Command "& {IEX (IRM https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/NewBuild/Standard.ps1)}"
 '@
 $SetupCompleteCMD | Out-File -FilePath 'C:\Windows\Setup\Scripts\SetupComplete.cmd' -Encoding ascii -Force
 # Ensure the Setup Scripts folder exists:
