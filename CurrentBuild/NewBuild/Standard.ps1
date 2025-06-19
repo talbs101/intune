@@ -25,7 +25,7 @@ Write-Host -ForegroundColor DarkGray "Executing OOBEDeploy Script fomr OSDCloud 
 Start-Process PowerShell -ArgumentList "-NoL -C Start-OOBEDeploy" -Wait
 
 Write-Host -ForegroundColor DarkGray "Starting SMT Build Customisation"
-Start-Process PowerShell -ArgumentList "-NoL -C Invoke-WebPSScript https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Start-Build.ps1" -Wait
+Start-Process PowerShell -ArgumentList "-NoL -C Invoke-WebPSScript https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/NewBuild/Start-Build.ps1" -Wait
 
 Write-Host -ForegroundColor DarkGray "Installing Company Portal"
 Start-Process PowerShell -ArgumentList "-NoL -C Invoke-WebPSScript https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/CompanyPortal.ps1" -Wait
