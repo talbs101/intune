@@ -13,6 +13,7 @@ $Office365XMLUrl    = $env:BUILD_Office365XMLUrl
 $CrowdStrikeUrl     = $env:BUILD_CrowdStrikeUrl
 $CrowdStrikeSecret  = $env:BUILD_CrowdStrikeSecret
 $LogicAppUrl        = $env:BUILD_LogicAppUrl
+$LogicAppUrlV2      = $env:BUILD_LogicAppUrlV2
 $AutopilotTenantId  = $env:BUILD_AutopilotTenantId
 $AutopilotAppId     = $env:BUILD_AutopilotAppId
 $AutopilotAppSecret = $env:BUILD_AutopilotAppSecret
