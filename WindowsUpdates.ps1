@@ -6,7 +6,7 @@ Write-Host -ForegroundColor Green "Installing Windows Updates"
     
 # How To: Update Windows using the PSWindowsUpdate Module
 
-$UpdateWindows = $true
+$UpdateWindows = $false
 if (!(Get-Module PSWindowsUpdate -ListAvailable)) {
     try {
         Install-Module PSWindowsUpdate -Force
@@ -23,6 +23,6 @@ if ($UpdateWindows) {
     Add-WUServiceManager -MicrosoftUpdate -Confirm:$false
 
     Write-Host -ForegroundColor DarkCyan 'Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -IgnoreReboot'
-    Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -IgnoreReboot -NotTitle 'Malicious'
+    #Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -IgnoreReboot -NotTitle 'Malicious'
 }
    
