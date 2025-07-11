@@ -164,9 +164,25 @@ Invoke-WebRequest -Uri $blobUrl -OutFile $localSetupPath -UseBasicParsing
 Invoke-WebRequest -Uri $xmlUrl  -OutFile $localXmlPath  -UseBasicParsing
 
 # 8. Pre‑download source files only for Shared (Office 2019) machines
-Write-Host -ForegroundColor Yellow 'Pre‑downloading Office source files …'
-$installArgs1 = @("/download configuration.xml")
-Start-Process -FilePath $localSetupPath -ArgumentList $installArgs1 -Wait -NoNewWindow
+    Start-Process -FilePath $localSetupPath `
+                  -ArgumentList "/download `"$downloadXmlPath`"" `
+                  -Wait -NoNewWindow
+    # 8. Pre‑download source files only for Shared (Office 2019) machines
+    Start-Process -FilePath $localSetupPath `
+                  -ArgumentList "/configure `"$localXmlPath`"" `
+                  -Wait -NoNewWindow
+
+# 9. Install Office
+#$installArgs2 = @("/configure `"$localXmlPath`"")
+#Start-Process -FilePath $localSetupPath -ArgumentList $installArgs1 -Wait -NoNewWindow
+
+# 9. Install Office
+#$installArgs2 = @("/configure `"$localXmlPath`"")
+#Start-Process -FilePath $localSetupPath -ArgumentList $installArgs1 -Wait -NoNewWindow
+
+# 9. Install Office
+#$installArgs2 = @("/configure `"$localXmlPath`"")
+#Start-Process -FilePath $localSetupPath -ArgumentList $installArgs1 -Wait -NoNewWindow
 
 # 9. Install Office
 #$installArgs2 = @("/configure `"$localXmlPath`"")
