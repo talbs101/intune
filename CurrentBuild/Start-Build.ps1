@@ -137,7 +137,7 @@ switch -Regex ($buildType) {
         $blobUrl          = $Office2019Url
         $xmlUrl           = $Office2019XMLUrl
         $message          = 'Install Office 2019 for Shared Machine'
-        #$needsPreDownload = $true           # Shared machines: stage source first
+        $needsPreDownload = $true           # Shared machines: stage source first
     }
     '^(?i)(standard|rebuild)$' {
         $blobUrl = $Office365Url
@@ -165,8 +165,8 @@ Invoke-WebRequest -Uri $xmlUrl  -OutFile $localXmlPath  -UseBasicParsing
 
 # 8. Pre‑download source files only for Shared (Office 2019) machines
 Write-Host -ForegroundColor Yellow 'Pre‑downloading Office source files …'
-#$installArgs1 = @("/download configuration.xml")
-#Start-Process -FilePath $localSetupPath -ArgumentList $installArgs1 -Wait -NoNewWindow
+$installArgs1 = @("/download configuration.xml")
+Start-Process -FilePath $localSetupPath -ArgumentList $installArgs1 -Wait -NoNewWindow
 
 # 9. Install Office
 #$installArgs2 = @("/configure `"$localXmlPath`"")
