@@ -111,40 +111,33 @@ Start-Process -FilePath $downloadPath -ArgumentList $installArgs -Wait -NoNewWin
 # Somewhere earlier you (or the caller) set $BuildType
 # e.g. $BuildType = 'Shared'
 
-$BuildTypeFile = "C:\OSDCloud\BuildType.txt"
-$buildType = Get-Content "C:\OSDCloud\BuildType.txt" -Raw
+$BuildTypeFile = 'C:\OSDCloud\BuildType.txt'
+$buildType     = (Get-Content $BuildTypeFile -Raw).Trim().Trim([char]0xFEFF)  # ← key fix
 
-# --- choose the correct download URLs ---------------------------
 if ($buildType -ieq 'Shared') {
-    # Office 2019 for Shared
-    $blobUrl = $Office2019Url      # setup.exe location
-    $xmlUrl  = $Office2019XMLUrl   # install.xml location
-    $message = "Install Office 2019 for Shared Machine"
+    Write-Output 'Branch: Shared'
+    $blobUrl = $Office2019Url
+    $xmlUrl  = $Office2019XMLUrl
+    $message = 'Install Office 2019 for Shared Machine'
 }
 elseif ($buildType -ieq 'Standard' -or $buildType -ieq 'Rebuild') {
-    # Office 365 for everything else
+    Write-Output 'Branch: Standard/Rebuild'
     $blobUrl = $Office365Url
     $xmlUrl  = $Office365XMLUrl
-    $message = "Installing Office 365"
+    $message = 'Installing Office 365'
 }
 else {
+    Write-Output 'Branch: default'
     $blobUrl = $Office365Url
     $xmlUrl  = $Office365XMLUrl
     $message = "Can't determine build type, installing 365"
 }
 
-# --- the rest of your existing code stays exactly the same ------
-$localPath      = "C:\Temp\setup.exe"
-$installXmlPath = "C:\Temp\install.xml"
-
-if (-not (Test-Path "C:\Temp")) {
-    New-Item -Path "C:\Temp" -ItemType Directory | Out-Null
-}
+# ... rest of script ...
+Write-Host -ForegroundColor Green $message
 
 Invoke-WebRequest -Uri $blobUrl -OutFile $localPath
 Invoke-WebRequest -Uri $xmlUrl  -OutFile $installXmlPath
-
-Write-Host -ForegroundColor Green $message
 
 # Run the installer
 Start-Process -FilePath $localPath -ArgumentList "/configure `"$installXmlPath`"" -Wait -NoNewWindow
