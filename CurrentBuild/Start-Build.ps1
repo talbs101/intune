@@ -108,42 +108,36 @@ Start-Process -FilePath $downloadPath -ArgumentList $installArgs -Wait -NoNewWin
 #   [OS] Install Office 365
 #=======================================================================
 
-# Somewhere earlier you (or the caller) set $BuildType
-# e.g. $BuildType = 'Shared'
+<# ---------------------------------------------------------------------------
+ Office installer – chooses Office 365 or Office 2019 based on BuildType.txt
+    • Shared    → download + install Office 2019
+    • Standard  → install Office 365
+    • Rebuild   → install Office 365
+    • Anything else → default to Office 365
+---------------------------------------------------------------------------#>
 
-$BuildTypeFile = 'C:\OSDCloud\BuildType.txt'
-$buildType     = (Get-Content $BuildTypeFile -Raw).Trim().Trim([char]0xFEFF)  # ← key fix
-
-# ---------------------------------------------------------------------------
-# Office installer – chooses Office 365 or Office 2019 based on BuildType.txt
-# ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
-# Office installer – chooses Office 365 or Office 2019 based on BuildType.txt
-# ---------------------------------------------------------------------------
-
-# 1. URLs – adjust these four to match your storage locations
+# 1. URLs – adjust to your storage locations
 
 # 2. Local working paths
 $workingDir     = 'C:\Temp'
 $localSetupPath = Join-Path $workingDir 'setup.exe'
 $localXmlPath   = Join-Path $workingDir 'install.xml'
 
-# 3. Enable TLS 1.2 (needed in WinPE/WinRE for Azure blobs)
+# 3. Ensure TLS 1.2 (needed in WinPE/WinRE for Azure blobs)
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# 4. Read build type from file, trim CR/LF/BOM
+# 4. Read build type, trimming CR/LF and possible UTF‑8 BOM
 $buildTypeFile = 'C:\OSDCloud\BuildType.txt'
 $buildType     = (Get-Content $buildTypeFile -Raw).Trim().Trim([char]0xFEFF)
 
-# 5. Pick URLs and decide if we need a pre‑download
+# 5. Decide which package to use and whether we must pre‑download
 $needsPreDownload = $false
 switch -Regex ($buildType) {
     '^(?i)shared$' {
         $blobUrl          = $Office2019Url
         $xmlUrl           = $Office2019XMLUrl
         $message          = 'Install Office 2019 for Shared Machine'
-        $needsPreDownload = $true          # <-- Only the Shared branch pre‑downloads
+        $needsPreDownload = $true           # Shared machines: stage source first
     }
     '^(?i)(standard|rebuild)$' {
         $blobUrl = $Office365Url
@@ -165,22 +159,23 @@ if (-not (Test-Path $workingDir)) {
     New-Item -Path $workingDir -ItemType Directory | Out-Null
 }
 
-# 7. Download setup.exe and install.xml (‑UseBasicParsing avoids the IE parser)
+# 7. Download setup.exe and install.xml (‑UseBasicParsing avoids IE parser)
 Invoke-WebRequest -Uri $blobUrl -OutFile $localSetupPath -UseBasicParsing
 Invoke-WebRequest -Uri $xmlUrl  -OutFile $localXmlPath  -UseBasicParsing
 
-# 8. If required, pre‑download the Office source files *before* we configure
+# 8. Pre‑download source files only for Shared (Office 2019) machines
 if ($needsPreDownload) {
     Write-Host -ForegroundColor Yellow 'Pre‑downloading Office source files …'
     Start-Process -FilePath $localSetupPath `
-                  -ArgumentList "/download configuration.xml"`
+                  -ArgumentList "/download `"$localXmlPath`"" `
                   -Wait -NoNewWindow
 }
 
-# 9. Finally, run the actual install
+# 9. Install Office
 Start-Process -FilePath $localSetupPath `
               -ArgumentList "/configure `"$localXmlPath`"" `
               -Wait -NoNewWindow
+
 
 
 
