@@ -130,6 +130,7 @@ elseif ($buildType -ieq 'Standard' -or $buildType -ieq 'Rebuild') {
 else {
     $blobUrl = $Office365Url
     $xmlUrl  = $Office365XMLUrl
+    $message = "Can't determine build type, installing 365"
 }
 
 # --- the rest of your existing code stays exactly the same ------
