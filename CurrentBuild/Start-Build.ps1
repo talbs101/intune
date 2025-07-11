@@ -172,22 +172,6 @@ Invoke-WebRequest -Uri $xmlUrl  -OutFile $localXmlPath  -UseBasicParsing
                   -ArgumentList "/configure `"$localXmlPath`"" `
                   -Wait -NoNewWindow
 
-# 9. Install Office
-#$installArgs2 = @("/configure `"$localXmlPath`"")
-#Start-Process -FilePath $localSetupPath -ArgumentList $installArgs1 -Wait -NoNewWindow
-
-# 9. Install Office
-#$installArgs2 = @("/configure `"$localXmlPath`"")
-#Start-Process -FilePath $localSetupPath -ArgumentList $installArgs1 -Wait -NoNewWindow
-
-# 9. Install Office
-#$installArgs2 = @("/configure `"$localXmlPath`"")
-#Start-Process -FilePath $localSetupPath -ArgumentList $installArgs1 -Wait -NoNewWindow
-
-# 9. Install Office
-#$installArgs2 = @("/configure `"$localXmlPath`"")
-#Start-Process -FilePath $localSetupPath -ArgumentList $installArgs1 -Wait -NoNewWindow
-
 
 
 
