@@ -173,7 +173,7 @@ Invoke-WebRequest -Uri $xmlUrl  -OutFile $localXmlPath  -UseBasicParsing
 if ($needsPreDownload) {
     Write-Host -ForegroundColor Yellow 'Pre‑downloading Office source files …'
     Start-Process -FilePath $localSetupPath `
-                  -ArgumentList "/download configuration.xml" `
+                  -ArgumentList "/download configuration.xml"`
                   -Wait -NoNewWindow
 }
 
