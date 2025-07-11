@@ -114,33 +114,60 @@ Start-Process -FilePath $downloadPath -ArgumentList $installArgs -Wait -NoNewWin
 $BuildTypeFile = 'C:\OSDCloud\BuildType.txt'
 $buildType     = (Get-Content $BuildTypeFile -Raw).Trim().Trim([char]0xFEFF)  # ← key fix
 
-if ($buildType -ieq 'Shared') {
-    Write-Output 'Branch: Shared'
-    $blobUrl = $Office2019Url
-    $xmlUrl  = $Office2019XMLUrl
-    $message = 'Install Office 2019 for Shared Machine'
-}
-elseif ($buildType -ieq 'Standard' -or $buildType -ieq 'Rebuild') {
-    Write-Output 'Branch: Standard/Rebuild'
-    $blobUrl = $Office365Url
-    $xmlUrl  = $Office365XMLUrl
-    $message = 'Installing Office 365'
-}
-else {
-    Write-Output 'Branch: default'
-    $blobUrl = $Office365Url
-    $xmlUrl  = $Office365XMLUrl
-    $message = "Can't determine build type, installing 365"
+# ---------------------------------------------------------------------------
+# Office installer – chooses Office 365 or Office 2019 based on BuildType.txt
+# ---------------------------------------------------------------------------
+
+# 1. URLs – adjust these four to match your storage locations
+
+# 2. Local working paths
+$workingDir     = 'C:\Temp'
+$localSetupPath = Join-Path $workingDir 'setup.exe'
+$localXmlPath   = Join-Path $workingDir 'install.xml'
+
+# 3. Make sure TLS 1.2 is on (needed in WinPE/WinRE for Azure blobs)
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+# 4. Read build type from file, trim CR/LF/BOM
+$buildTypeFile = 'C:\OSDCloud\BuildType.txt'
+$buildType     = (Get-Content $buildTypeFile -Raw).Trim().Trim([char]0xFEFF)
+
+# 5. Pick URLs based on build type
+switch -Regex ($buildType) {
+    '^(?i)shared$' {
+        $blobUrl = $Office2019Url
+        $xmlUrl  = $Office2019XMLUrl
+        $message = 'Install Office 2019 for Shared Machine'
+    }
+    '^(?i)(standard|rebuild)$' {
+        $blobUrl = $Office365Url
+        $xmlUrl  = $Office365XMLUrl
+        $message = 'Installing Office 365'
+    }
+    default {
+        $blobUrl = $Office365Url
+        $xmlUrl  = $Office365XMLUrl
+        $message = "Can't determine build type, installing 365"
+    }
 }
 
-# ... rest of script ...
+Write-Host -ForegroundColor Cyan  "Build type detected: $buildType"
 Write-Host -ForegroundColor Green $message
 
-Invoke-WebRequest -Uri $blobUrl -OutFile $localPath
-Invoke-WebRequest -Uri $xmlUrl  -OutFile $installXmlPath
+# 6. Ensure working directory exists
+if (-not (Test-Path $workingDir)) {
+    New-Item -Path $workingDir -ItemType Directory | Out-Null
+}
 
-# Run the installer
-Start-Process -FilePath $localPath -ArgumentList "/configure `"$installXmlPath`"" -Wait -NoNewWindow
+# 7. Download setup.exe and install.xml (‑UseBasicParsing avoids the IE parser)
+Invoke-WebRequest -Uri $blobUrl -OutFile $localSetupPath -UseBasicParsing
+Invoke-WebRequest -Uri $xmlUrl  -OutFile $localXmlPath  -UseBasicParsing
+
+# 8. Run the installer
+Start-Process -FilePath $localSetupPath `
+              -ArgumentList "/configure `"$localXmlPath`"" `
+              -Wait -NoNewWindow
+
 
 #=======================================================================
 #   [OS] Install Company Portal
