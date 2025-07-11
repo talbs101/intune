@@ -118,6 +118,10 @@ $buildType     = (Get-Content $BuildTypeFile -Raw).Trim().Trim([char]0xFEFF)  # 
 # Office installer – chooses Office 365 or Office 2019 based on BuildType.txt
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Office installer – chooses Office 365 or Office 2019 based on BuildType.txt
+# ---------------------------------------------------------------------------
+
 # 1. URLs – adjust these four to match your storage locations
 
 # 2. Local working paths
@@ -125,24 +129,26 @@ $workingDir     = 'C:\Temp'
 $localSetupPath = Join-Path $workingDir 'setup.exe'
 $localXmlPath   = Join-Path $workingDir 'install.xml'
 
-# 3. Make sure TLS 1.2 is on (needed in WinPE/WinRE for Azure blobs)
+# 3. Enable TLS 1.2 (needed in WinPE/WinRE for Azure blobs)
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 # 4. Read build type from file, trim CR/LF/BOM
 $buildTypeFile = 'C:\OSDCloud\BuildType.txt'
 $buildType     = (Get-Content $buildTypeFile -Raw).Trim().Trim([char]0xFEFF)
 
-# 5. Pick URLs based on build type
+# 5. Pick URLs and decide if we need a pre‑download
+$needsPreDownload = $false
 switch -Regex ($buildType) {
     '^(?i)shared$' {
-        $blobUrl = $Office2019Url
-        $xmlUrl  = $Office2019XMLUrl
-        $message = 'Install Office 2019 for Shared Machine'
+        $blobUrl          = $Office2019Url
+        $xmlUrl           = $Office2019XMLUrl
+        $message          = 'Install Office 2019 for Shared Machine'
+        $needsPreDownload = $true          # <-- Only the Shared branch pre‑downloads
     }
     '^(?i)(standard|rebuild)$' {
         $blobUrl = $Office365Url
         $xmlUrl  = $Office365XMLUrl
-        $message = 'Installing Office 365'
+        $message = 'Installing Office 365'
     }
     default {
         $blobUrl = $Office365Url
@@ -163,10 +169,19 @@ if (-not (Test-Path $workingDir)) {
 Invoke-WebRequest -Uri $blobUrl -OutFile $localSetupPath -UseBasicParsing
 Invoke-WebRequest -Uri $xmlUrl  -OutFile $localXmlPath  -UseBasicParsing
 
-# 8. Run the installer
+# 8. If required, pre‑download the Office source files *before* we configure
+if ($needsPreDownload) {
+    Write-Host -ForegroundColor Yellow 'Pre‑downloading Office source files …'
+    Start-Process -FilePath $localSetupPath `
+                  -ArgumentList "/download `"$localXmlPath`"" `
+                  -Wait -NoNewWindow
+}
+
+# 9. Finally, run the actual install
 Start-Process -FilePath $localSetupPath `
               -ArgumentList "/configure `"$localXmlPath`"" `
               -Wait -NoNewWindow
+
 
 
 #=======================================================================
