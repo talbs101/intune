@@ -16,6 +16,9 @@ $LogicAppUrl        = $env:BUILD_LogicAppUrl
 $AutopilotTenantId  = $env:BUILD_AutopilotTenantId
 $AutopilotAppId     = $env:BUILD_AutopilotAppId
 $AutopilotAppSecret = $env:BUILD_AutopilotAppSecret
+$Office2019Url      = $env:BUILD_Office2019Url
+$Office2019XMLUrl   = $env:BUILD_Office2019XMLUrl
+
 #=======================================================================
 #   [OS] Get Computer Name
 #=======================================================================
@@ -104,25 +107,43 @@ Start-Process -FilePath $downloadPath -ArgumentList $installArgs -Wait -NoNewWin
 #=======================================================================
 #   [OS] Install Office 365
 #=======================================================================
-          
-Write-Host -ForegroundColor Green "Installing Office 365 from Azure"
 
-# Variables
-$blobUrl = $Office365Url
-$localPath = "C:\Temp\setup.exe"
-$installXmlPath = "C:\Temp\install.xml"
+# Somewhere earlier you (or the caller) set $BuildType
+# e.g. $BuildType = 'Shared'
 
-# Create download directory if it doesn't exist
-if (-not (Test-Path "C:\Temp")) {
-    New-Item -Path "C:\Temp" -ItemType Directory
+$BuildTypeFile = "C:\OSDCloud\BuildType.txt"
+$buildType = Get-Content "C:\OSDCloud\BuildType.txt" -Raw
+
+# --- choose the correct download URLs ---------------------------
+if ($buildType -ieq 'Shared') {
+    # Office 2019 for Shared
+    $blobUrl = $Office2019Url      # setup.exe location
+    $xmlUrl  = $Office2019XMLUrl   # install.xml location
+    $message = "Install Office 2019 for Shared Machine"
+}
+elseif ($buildType -ieq 'Standard' -or $buildType -ieq 'Rebuild') {
+    # Office 365 for everything else
+    $blobUrl = $Office365Url
+    $xmlUrl  = $Office365XMLUrl
+    $message = "Installing Office 365"
+}
+else {
+    $blobUrl = $Office365Url
+    $xmlUrl  = $Office365XMLUrl
 }
 
-# Download setup.exe from Azure Blob
-Invoke-WebRequest -Uri $blobUrl -OutFile $localPath
+# --- the rest of your existing code stays exactly the same ------
+$localPath      = "C:\Temp\setup.exe"
+$installXmlPath = "C:\Temp\install.xml"
 
-# Optionally download the install.xml if it's also in the blob
-$xmlUrl = $Office365XMLUrl
-Invoke-WebRequest -Uri $xmlUrl -OutFile $installXmlPath
+if (-not (Test-Path "C:\Temp")) {
+    New-Item -Path "C:\Temp" -ItemType Directory | Out-Null
+}
+
+Invoke-WebRequest -Uri $blobUrl -OutFile $localPath
+Invoke-WebRequest -Uri $xmlUrl  -OutFile $installXmlPath
+
+Write-Host -ForegroundColor Green $message
 
 # Run the installer
 Start-Process -FilePath $localPath -ArgumentList "/configure `"$installXmlPath`"" -Wait -NoNewWindow
