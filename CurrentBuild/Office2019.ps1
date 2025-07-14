@@ -39,11 +39,9 @@ $BuilderFile     = "C:\OSDCloud\Builder.txt"
 
 # 1. URLs – adjust to your storage locations
 
-# 2. Local working paths
 $workingDir     = 'C:\Temp'
 $localSetupPath = Join-Path $workingDir 'setup.exe'
 $localXmlPath   = Join-Path $workingDir 'install.xml'
-$downloadXmlPath = Join-Path $workingDir 'configuration.xml'
 
 # 3. Ensure TLS 1.2 (needed in WinPE/WinRE for Azure blobs)
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -87,13 +85,12 @@ Invoke-WebRequest -Uri $xmlUrl  -OutFile $localXmlPath  -UseBasicParsing
 
 # 8. Pre‑download source files only for Shared (Office 2019) machines
     Start-Process -FilePath $localSetupPath `
-                  -ArgumentList "/download `"$downloadXmlPath`"" `
+                  -ArgumentList "/download `"$localXmlPath`"" `
                   -Wait -NoNewWindow
-
-# 9. Install Office
-#$installArgs2 = @("/configure `"$localXmlPath`"")
-#Start-Process -FilePath $localSetupPath -ArgumentList $installArgs1 -Wait -NoNewWindow
-
+    # 8. Pre‑download source files only for Shared (Office 2019) machines
+    Start-Process -FilePath $localSetupPath `
+                  -ArgumentList "/configure `"$localXmlPath`"" `
+                  -Wait -NoNewWindow
 
 
 
