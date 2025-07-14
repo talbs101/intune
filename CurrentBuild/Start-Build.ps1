@@ -179,12 +179,12 @@ Invoke-WebRequest -Uri $xmlUrl  -OutFile $localXmlPath  -UseBasicParsing
 #   [OS] Install Company Portal
 #=======================================================================
 
-#Write-Host -ForegroundColor Green "Installing Company Portal"
-#$packagePath    = "C:\OSDCloud\CompanyPortal\CompanyPortal.appxbundle"
-#$dependencyPath = "C:\OSDCloud\CompanyPortal\Dependencies"
-#$dependencies   = Get-ChildItem -Path $dependencyPath -Filter *.appx | ForEach-Object { $_.FullName }
+Write-Host -ForegroundColor Green "Installing Company Portal"
+$packagePath    = "C:\OSDCloud\CompanyPortal\CompanyPortal.appxbundle"
+$dependencyPath = "C:\OSDCloud\CompanyPortal\Dependencies"
+$dependencies   = Get-ChildItem -Path $dependencyPath -Filter *.appx | ForEach-Object { $_.FullName }
 
-#Add-AppxProvisionedPackage -Online -PackagePath $packagePath -DependencyPackagePath $dependencies -SkipLicense
+Add-AppxProvisionedPackage -Online -PackagePath $packagePath -DependencyPackagePath $dependencies -SkipLicense
 
 #=======================================================================
 #   [OS] Install Crowdstrike
