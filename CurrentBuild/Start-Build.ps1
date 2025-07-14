@@ -164,9 +164,9 @@ Invoke-WebRequest -Uri $blobUrl -OutFile $localSetupPath -UseBasicParsing
 Invoke-WebRequest -Uri $xmlUrl  -OutFile $localXmlPath  -UseBasicParsing
 
 # 8. Pre‑download source files only for Shared (Office 2019) machines
-    #Start-Process -FilePath $localSetupPath `
-                  #-ArgumentList "/download `"$downloadXmlPath`"" `
-                  #-Wait -NoNewWindow
+    Start-Process -FilePath $localSetupPath `
+                  -ArgumentList "/download `"$localXmlPath`"" `
+                  -Wait -NoNewWindow
     # 8. Pre‑download source files only for Shared (Office 2019) machines
     Start-Process -FilePath $localSetupPath `
                   -ArgumentList "/configure `"$localXmlPath`"" `
@@ -323,3 +323,4 @@ $response
 #   [OS] Tidy Up
 #=======================================================================
 Remove-Item -Path "C:\Temp" -Recurse -Force
+Remove-Item -Path "C:\OfficeSetup" -Recurse -Force
