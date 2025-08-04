@@ -133,7 +133,7 @@ $buildType     = (Get-Content $buildTypeFile -Raw).Trim().Trim([char]0xFEFF)
 # 5. Decide which package to use and whether we must pre‑download
 $needsPreDownload = $false
 switch -Regex ($buildType) {
-    '^(?i)shared$' {
+    '^(?i)care$' {
         $blobUrl          = $Office2019Url
         $xmlUrl           = $Office2019XMLUrl
         $message          = 'Install Office 2019 for Shared Machine'
