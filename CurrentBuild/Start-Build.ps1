@@ -324,3 +324,4 @@ $response
 #=======================================================================
 Remove-Item -Path "C:\Temp" -Recurse -Force
 Remove-Item -Path "C:\OfficeSetup" -Recurse -Force
+Remove-Item -Path "C:\OSDCloud\" -Recurse -Force
