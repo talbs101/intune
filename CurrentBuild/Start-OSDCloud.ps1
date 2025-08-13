@@ -65,7 +65,7 @@ $comboBuild = New-Object System.Windows.Forms.ComboBox
 $comboBuild.Location     = New-Object System.Drawing.Point(20,90)
 $comboBuild.Size         = New-Object System.Drawing.Size(280,24)
 $comboBuild.DropDownStyle = 'DropDownList'
-$comboBuild.Items.AddRange(@("Standard", "Care"))
+$comboBuild.Items.AddRange(@("Standard", "Care", "UAT"))
 $form.Controls.Add($comboBuild)
 
 # Label: "Who is building?"
