@@ -133,23 +133,19 @@ $buildType     = (Get-Content $buildTypeFile -Raw).Trim().Trim([char]0xFEFF)
 # 5. Decide which package to use and whether we must pre‑download
 $needsPreDownload = $false
 switch -Regex ($buildType) {
-    '^(?i)care$' {
+    '^(?i)(care|kiosk)$' {
         $blobUrl          = $Office2019Url
         $xmlUrl           = $Office2019XMLUrl
-        $message          = 'Install Office 2019 for Shared Machine'
+        $message          = 'Install Office 2019 for Shared Machine'
         $needsPreDownload = $true           # Shared machines: stage source first
     }
     '^(?i)(standard|rebuild)$' {
         $blobUrl = $Office365Url
         $xmlUrl  = $Office365XMLUrl
-        $message = 'Installing Office 365'
-    }
-    default {
-        $blobUrl = $Office365Url
-        $xmlUrl  = $Office365XMLUrl
-        $message = "Can't determine build type, installing 365"
+        $message = 'Installing Office 365'
     }
 }
+
 
 Write-Host -ForegroundColor Cyan  "Build type detected: $buildType"
 Write-Host -ForegroundColor Green $message
