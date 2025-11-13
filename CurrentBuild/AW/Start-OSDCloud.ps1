@@ -65,7 +65,7 @@ $comboBuild = New-Object System.Windows.Forms.ComboBox
 $comboBuild.Location     = New-Object System.Drawing.Point(20,90)
 $comboBuild.Size         = New-Object System.Drawing.Size(280,24)
 $comboBuild.DropDownStyle = 'DropDownList'
-$comboBuild.Items.AddRange(@("Standard", "Care", "Kiosk-Chapel"))
+$comboBuild.Items.AddRange(@("PAW"))
 $form.Controls.Add($comboBuild)
 
 # Label: "Who is building?"
@@ -80,7 +80,7 @@ $comboBuilder = New-Object System.Windows.Forms.ComboBox
 $comboBuilder.Location     = New-Object System.Drawing.Point(20,160)
 $comboBuilder.Size         = New-Object System.Drawing.Size(280,24)
 $comboBuilder.DropDownStyle = 'DropDownList'
-$comboBuilder.Items.AddRange(@("Jon","Ryan","Jacob","Mike","Linds"))
+$comboBuilder.Items.AddRange(@("IT"))
 $form.Controls.Add($comboBuilder)
 
 # Button: Start
