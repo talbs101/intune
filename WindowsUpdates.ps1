@@ -6,7 +6,7 @@ Write-Host -ForegroundColor Green "Installing Windows Updates"
     
 # How To: Update Windows using the PSWindowsUpdate Module
 
-$UpdateWindows = $false
+$UpdateWindows = $true
 if (!(Get-Module PSWindowsUpdate -ListAvailable)) {
     try {
         Install-Module PSWindowsUpdate -Force
