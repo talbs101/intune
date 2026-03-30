@@ -80,7 +80,7 @@ $comboBuilder = New-Object System.Windows.Forms.ComboBox
 $comboBuilder.Location     = New-Object System.Drawing.Point(20,160)
 $comboBuilder.Size         = New-Object System.Drawing.Size(280,24)
 $comboBuilder.DropDownStyle = 'DropDownList'
-$comboBuilder.Items.AddRange(@("Jon","Ryan","Jacob","Mike","Linds"))
+$comboBuilder.Items.AddRange(@("jon.titchmarsh@stmonicatrust.org.uk","ryan.appleton@stmonicatrust.org.uk","jacob.ashby@stmonicatrust.org.uk","mike.grunshaw@stmonicatrust.org.uk","james.talbot@stmonicatrust.org.uk"))
 $form.Controls.Add($comboBuilder)
 
 # Button: Start
