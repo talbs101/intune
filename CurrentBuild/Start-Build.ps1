@@ -282,13 +282,23 @@ $model = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
 $serial = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
 
 
-# Get the MAC address of the Wi-Fi adapter
-$wifiMac = (Get-NetAdapter -Name WiFi | Select-Object -ExpandProperty MacAddress)
+# === Get Wi-Fi MAC address (works regardless of adapter name) ===
+$wifiAdapter = Get-NetAdapter |
+    Where-Object {
+        $_.Name -like "*Wi-Fi*" -or
+        $_.InterfaceDescription -match "Wireless|Wi-Fi|802\.11|MediaTek|Intel.*WiFi|Qualcomm.*WiFi|Realtek.*WiFi"
+    } |
+    Select-Object -First 1
 
-# Display the MAC address without the dash
-$wifiMacWithoutDash = $wifiMac -replace '-', ''
-
-Write-Host "Wi-Fi MAC Address: $wifiMacWithoutDash"
+if ($wifiAdapter) {
+    $wifiMac = $wifiAdapter.MacAddress
+    $wifiMacWithoutDash = $wifiMac -replace '-', ''
+    Write-Host "Wi-Fi MAC Address: $wifiMacWithoutDash" -ForegroundColor Green
+}
+else {
+    Write-Host "ERROR: No Wi-Fi adapter found!" -ForegroundColor Red
+    $wifiMacWithoutDash = "NOT_FOUND"
+}
 
 
 # Your Logic App HTTP trigger URL
