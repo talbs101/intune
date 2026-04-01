@@ -130,6 +130,9 @@ $localXmlPath   = Join-Path $workingDir 'install.xml'
 $buildTypeFile = 'C:\OSDCloud\BuildType.txt'
 $buildType     = (Get-Content $buildTypeFile -Raw).Trim().Trim([char]0xFEFF)
 
+$builderFile = 'C:\OSDCloud\Builder.txt'
+$builder     = (Get-Content $builderFile -Raw).Trim().Trim([char]0xFEFF)
+
 # 5. Decide which package to use and whether we must pre‑download
 $needsPreDownload = $false
 switch -Regex ($buildType) {
@@ -213,6 +216,7 @@ Start-Process -FilePath $localPath -ArgumentList "/install /quiet /norestart /CI
 # Read Build Type and Builder
 
 $BuildType = "C:\OSDCloud\BuildType.txt"
+$Builder = "C:\OSDCloud\Builder.txt"
 
 if (Test-Path $BuildType) {
     $GroupTagName = Get-Content "C:\OSDCloud\BuildType.txt" -Raw
@@ -294,6 +298,7 @@ $logicAppUrl = $LogicAppUrl
 $payload = @{
     wifimac    = $wifiMacWithoutDash
     email      = "james.talbot@stmonicatrust.org.uk"
+    builder    = $Builder
     deviceName = $deviceName
     cpuname = $cpuname
     ram = $ram
