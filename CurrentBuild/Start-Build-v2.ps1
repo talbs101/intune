@@ -70,43 +70,57 @@ function Send-BuildEvent {
     )
 
     $base = @{
-        stage      = $Stage
-        status     = $Status
-        error      = $ErrorMsg
-        hostname   = $deviceName
-        serial     = $serial
-        buildType  = $buildType
-        builder    = $builder
-        timestamp  = (Get-Date -Format "o")
+        stage     = $Stage
+        status    = $Status
+        error     = $ErrorMsg
+        hostname  = $deviceName
+        serial    = $serial
+        buildType = $buildType
+        builder   = $builder
+        timestamp = (Get-Date -Format "o")
     }
 
-    # Merge any extra fields (hardware data on first event)
     foreach ($key in $Extra.Keys) { $base[$key] = $Extra[$key] }
 
     $payload = $base | ConvertTo-Json -Depth 3
 
     try {
-        Invoke-RestMethod -Uri $LogicAppUrl -Method Post -Body $payload `
+        $response = Invoke-RestMethod -Uri $LogicAppUrl -Method Post -Body $payload `
             -ContentType "application/json" -ErrorAction Stop
+
         Write-Host "[$Stage] Event sent — $Status" -ForegroundColor Cyan
+
+        # Return the response so the caller can use it
+        return $response
+
     } catch {
         Write-Warning "[$Stage] Failed to send build event: $_"
-        # Non-fatal — build continues even if the webhook fails
+        return $null
     }
 }
 
+
 #=======================================================================
 #   [OS] Stage: SetupStarted
-#   Sends full hardware payload so Logic App can create Jira ticket + asset
 #=======================================================================
 
-Send-BuildEvent -Stage "SetupStarted" -Extra @{
-    email      = "james.talbot@stmonicatrust.org.uk"
-    cpuName    = $cpuName
-    ram        = "$ram GB"
-    diskSize   = ($diskSize -join ", ")
-    model      = $model
-    wifiMac    = $wifiMac
+$buildRecord = Send-BuildEvent -Stage "SetupStarted" -Extra @{
+    email     = "james.talbot@stmonicatrust.org.uk"
+    cpuName   = $cpuName
+    ram       = "$ram GB"
+    diskSize  = ($diskSize -join ", ")
+    model     = $model
+    wifiMac   = $wifiMac
+}
+
+# Log what was created — useful for debugging on the device
+if ($buildRecord) {
+    Write-Host "Jira Ticket  : $($buildRecord.jiraIssueKey)"   -ForegroundColor Green
+    Write-Host "Asset Key    : $($buildRecord.assetObjectKey)" -ForegroundColor Green
+    Write-Host "Asset ID     : $($buildRecord.assetObjectId)"  -ForegroundColor Green
+
+    # Optionally write to a local file in case you need to check it mid-build
+    $buildRecord | ConvertTo-Json | Out-File "C:\OSDCloud\BuildRecord.json" -Encoding utf8
 }
 
 #=======================================================================
