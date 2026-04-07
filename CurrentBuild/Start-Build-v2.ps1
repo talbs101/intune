@@ -125,29 +125,6 @@ $registryPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAcces
 if (-not (Test-Path $registryPath)) { New-Item -Path $registryPath -Force | Out-Null }
 Set-ItemProperty -Path $registryPath -Name "Value" -Type String -Value "Allow"
 
-#=======================================================================
-#   [OS] Install SimpleHelp
-#=======================================================================
-
-Write-Host -ForegroundColor Green "Installing SimpleHelp from Azure"
-
-try {
-    $downloadPath = "C:\Temp\Remote-Access-windows64-online.exe"
-    if (-Not (Test-Path "C:\Temp")) { New-Item -Path "C:\Temp" -ItemType Directory | Out-Null }
-
-    Invoke-WebRequest -Uri $SimpleHelpUrl -OutFile $downloadPath
-    Start-Process -FilePath $downloadPath -ArgumentList @(
-        "/S", "/NAME=AUTODETECT",
-        "/HOST=https://sh.stmonicatrust.org.uk:444",
-        "/NOSHORTCUTS"
-    ) -Wait -NoNewWindow
-
-    Send-BuildEvent -Stage "SimpleHelpInstalled"
-
-} catch {
-    Send-BuildEvent -Stage "SimpleHelpInstalled" -Status "failed" -ErrorMsg $_.Exception.Message
-    Write-Warning "SimpleHelp install failed: $_"
-}
 
 #=======================================================================
 #   [OS] Install Office
