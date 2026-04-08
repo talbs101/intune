@@ -24,9 +24,9 @@ $Office2019XMLUrl   = $env:BUILD_Office2019XMLUrl
 function Send-BuildEvent {
     param(
         [string]$Stage,
-        [string]$Status    = "success",
-        [string]$ErrorMsg  = "",
-        [hashtable]$Extra  = @{}
+        [string]$Status   = "success",
+        [string]$ErrorMsg = "",
+        [hashtable]$Extra = @{}
     )
 
     $base = @{
@@ -49,8 +49,6 @@ function Send-BuildEvent {
             -ContentType "application/json" -ErrorAction Stop
 
         Write-Host "[$Stage] Event sent — $Status" -ForegroundColor Cyan
-
-        # Return the response so the caller can use it
         return $response
 
     } catch {
@@ -60,7 +58,35 @@ function Send-BuildEvent {
 }
 
 #=======================================================================
+#   [OS] Get Computer Name / Build Info
+#   Must come before hardware collection so $deviceName, $serial,
+#   $buildType and $builder are all set before Send-BuildEvent is called
+#=======================================================================
+
+$DeviceNameFile = "C:\OSDCloud\DeviceName.txt"
+$BuildTypeFile  = "C:\OSDCloud\BuildType.txt"
+$BuilderFile    = "C:\OSDCloud\Builder.txt"
+
+if (Test-Path $DeviceNameFile) {
+    $deviceName = (Get-Content $DeviceNameFile -Raw).Trim()
+} else {
+    Write-Warning "DeviceName file not found. Using $env:COMPUTERNAME"
+    $deviceName = $env:COMPUTERNAME
+}
+
+$buildType = if (Test-Path $BuildTypeFile) { (Get-Content $BuildTypeFile -Raw).Trim().Trim([char]0xFEFF) } else { "Standard" }
+$builder   = if (Test-Path $BuilderFile)   { (Get-Content $BuilderFile   -Raw).Trim().Trim([char]0xFEFF) } else { "Unknown" }
+
+$serial = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
+Write-Host "Serial    : $serial"    -ForegroundColor Gray
+Write-Host "Device    : $deviceName" -ForegroundColor Gray
+Write-Host "Build Type: $buildType"  -ForegroundColor Gray
+Write-Host "Builder   : $builder"    -ForegroundColor Gray
+
+#=======================================================================
 #   [OS] Collect Hardware Info
+#   Collected once here — available to all stages below including
+#   Meraki (needs wifiMac) and JiraAsset (needs all fields)
 #=======================================================================
 
 $cpuName  = (Get-CimInstance Win32_Processor).Name
@@ -80,29 +106,11 @@ $wifiMac = if ($wifiAdapter) {
     "NOT_FOUND"
 }
 
-Write-Host "Wi-Fi MAC : $wifiMac" -ForegroundColor Gray
-
-#=======================================================================
-#   [OS] Get Computer Name / Build Info
-#=======================================================================
-
-$DeviceNameFile = "C:\OSDCloud\DeviceName.txt"
-$BuildTypeFile  = "C:\OSDCloud\BuildType.txt"
-$BuilderFile    = "C:\OSDCloud\Builder.txt"
-
-if (Test-Path $DeviceNameFile) {
-    $deviceName = (Get-Content $DeviceNameFile -Raw).Trim()
-} else {
-    Write-Warning "DeviceName file not found. Using $env:COMPUTERNAME"
-    $deviceName = $env:COMPUTERNAME
-}
-
-$buildType = if (Test-Path $BuildTypeFile) { (Get-Content $BuildTypeFile -Raw).Trim().Trim([char]0xFEFF) } else { "Standard" }
-$builder   = if (Test-Path $BuilderFile)   { (Get-Content $BuilderFile   -Raw).Trim().Trim([char]0xFEFF) } else { "Unknown" }
-
-# Collect serial immediately — needed for ALL Send-BuildEvent calls
-$serial = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
-Write-Host "Serial: $serial" -ForegroundColor Gray
+Write-Host "CPU       : $cpuName"  -ForegroundColor Gray
+Write-Host "RAM       : $ram GB"   -ForegroundColor Gray
+Write-Host "Disk      : $diskSize" -ForegroundColor Gray
+Write-Host "Model     : $model"    -ForegroundColor Gray
+Write-Host "Wi-Fi MAC : $wifiMac"  -ForegroundColor Gray
 
 #=======================================================================
 #   [OS] Decrypt BitLocker
@@ -127,18 +135,14 @@ Set-ItemProperty -Path $registryPath -Name "Value" -Type String -Value "Allow"
 Write-Host -ForegroundColor Green "Installing SimpleHelp from Azure"
 
 try {
-    # Define local download path
     $downloadPath = "C:\Temp\Remote-Access-windows64-online.exe"
 
-    # Ensure C:\Temp exists
     if (-Not (Test-Path -Path "C:\Temp")) {
         New-Item -Path "C:\Temp" -ItemType Directory | Out-Null
     }
 
-    # Download the file
     Invoke-WebRequest -Uri $SimpleHelpUrl -OutFile $downloadPath
 
-    # Run the installer
     Start-Process -FilePath $downloadPath -ArgumentList @(
         "/S", "/NAME=AUTODETECT",
         "/HOST=https://sh.stmonicatrust.org.uk:444",
@@ -192,8 +196,6 @@ try {
     Send-BuildEvent -Stage "OfficeInstalled" -Status "failed" -ErrorMsg $_.Exception.Message
     Write-Warning "Office install failed: $_"
 }
-
-
 
 #=======================================================================
 #   [OS] Install CrowdStrike
@@ -250,19 +252,27 @@ try {
     Write-Warning "Autopilot enrolment failed: $_"
 }
 
-
 #=======================================================================
-#   [OS] Stage: Create Jira Asset
-#=======================================================================
-#=======================================================================
-#   [OS] Collect Hardware Info (used throughout)
+#   [OS] Stage: Meraki Whitelist
+#   Sends MAC address to Logic App which applies the group policy
 #=======================================================================
 
-# Hardware collected — $wifiMac is set
+Write-Host -ForegroundColor Green "Sending Meraki whitelist event"
 
-Send-BuildEvent -Stage "Meraki" -Extra @{ wifiMac = $wifiMac }
-#
-# JiraAsset — $wifiMac available
+if ($wifiMac -ne "NOT_FOUND") {
+    Send-BuildEvent -Stage "Meraki" -Extra @{ wifiMac = $wifiMac }
+} else {
+    Send-BuildEvent -Stage "Meraki" -Status "failed" -ErrorMsg "No Wi-Fi adapter found — cannot whitelist device in Meraki"
+    Write-Warning "Meraki whitelist skipped — no Wi-Fi MAC address available"
+}
+
+#=======================================================================
+#   [OS] Stage: Jira Asset
+#   Sends full hardware payload to Logic App which creates the asset
+#=======================================================================
+
+Write-Host -ForegroundColor Green "Sending Jira asset creation event"
+
 if ($wifiMac -ne "NOT_FOUND") {
     Send-BuildEvent -Stage "JiraAsset" -Status "success" -Extra @{
         cpuName  = $cpuName
@@ -272,16 +282,12 @@ if ($wifiMac -ne "NOT_FOUND") {
         wifiMac  = $wifiMac
     }
 } else {
-    Send-BuildEvent -Stage "JiraAsset" -Status "failed" -ErrorMsg "No Wi-Fi adapter found — MAC address could not be obtained"
+    Send-BuildEvent -Stage "JiraAsset" -Status "failed" -ErrorMsg "No Wi-Fi adapter found — MAC address could not be obtained. Jira asset may be incomplete."
 }
-#
-# BuildComplete
-
-
 
 #=======================================================================
 #   [OS] Stage: BuildComplete
-#   Final event — Logic App transitions Jira ticket, applies Meraki policy
+#   Final event — Logic App transitions Jira ticket and sends email
 #=======================================================================
 
 Send-BuildEvent -Stage "BuildComplete"
@@ -290,6 +296,6 @@ Send-BuildEvent -Stage "BuildComplete"
 #   [OS] Tidy Up
 #=======================================================================
 
-Remove-Item -Path "C:\Temp"      -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "C:\Temp"        -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -Path "C:\OfficeSetup" -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item -Path "C:\OSDCloud\"  -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "C:\OSDCloud\"   -Recurse -Force -ErrorAction SilentlyContinue
