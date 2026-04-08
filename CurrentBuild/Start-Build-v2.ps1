@@ -59,6 +59,28 @@ function Send-BuildEvent {
     }
 }
 
+#=======================================================================
+#   [OS] Collect Hardware Info
+#=======================================================================
+
+$cpuName  = (Get-CimInstance Win32_Processor).Name
+$ram      = [math]::Round((Get-CimInstance Win32_PhysicalMemory | Measure-Object -Property Capacity -Sum).Sum / 1GB, 2)
+$diskSize = (Get-CimInstance Win32_DiskDrive | ForEach-Object { "{0} GB" -f ([math]::Round($_.Size / 1GB, 2)) }) -join ", "
+$model    = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
+
+$wifiAdapter = Get-NetAdapter | Where-Object {
+    $_.Name -like "*Wi-Fi*" -or
+    $_.InterfaceDescription -match "Wireless|Wi-Fi|802\.11|MediaTek|Intel.*WiFi|Qualcomm.*WiFi|Realtek.*WiFi"
+} | Select-Object -First 1
+
+$wifiMac = if ($wifiAdapter) {
+    ($wifiAdapter.MacAddress) -replace '-', ''
+} else {
+    Write-Host "ERROR: No Wi-Fi adapter found!" -ForegroundColor Red
+    "NOT_FOUND"
+}
+
+Write-Host "Wi-Fi MAC : $wifiMac" -ForegroundColor Gray
 
 #=======================================================================
 #   [OS] Get Computer Name / Build Info
@@ -228,6 +250,7 @@ try {
     Write-Warning "Autopilot enrolment failed: $_"
 }
 
+
 #=======================================================================
 #   [OS] Stage: Create Jira Asset
 #=======================================================================
@@ -235,35 +258,24 @@ try {
 #   [OS] Collect Hardware Info (used throughout)
 #=======================================================================
 
-$cpuName  = (Get-CimInstance Win32_Processor).Name
-$ram      = [math]::Round((Get-CimInstance Win32_PhysicalMemory | Measure-Object -Property Capacity -Sum).Sum / 1GB, 2)
-$diskSize = Get-CimInstance Win32_DiskDrive | ForEach-Object { "{0} GB" -f ([math]::Round($_.Size / 1GB, 2)) }
-$model    = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
-# $serial already set above — don't re-declare here
+# Hardware collected — $wifiMac is set
 
-$wifiAdapter = Get-NetAdapter | Where-Object {
-    $_.Name -like "*Wi-Fi*" -or
-    $_.InterfaceDescription -match "Wireless|Wi-Fi|802\.11|MediaTek|Intel.*WiFi|Qualcomm.*WiFi|Realtek.*WiFi"
-} | Select-Object -First 1
-
-if ($wifiAdapter) {
-    $wifiMac = ($wifiAdapter.MacAddress) -replace '-', ''
-    Write-Host "Wi-Fi MAC Address: $wifiMac" -ForegroundColor Green
-
+Send-BuildEvent -Stage "Meraki" -Extra @{ wifiMac = $wifiMac }
+#
+# JiraAsset — $wifiMac available
+if ($wifiMac -ne "NOT_FOUND") {
     Send-BuildEvent -Stage "JiraAsset" -Status "success" -Extra @{
         cpuName  = $cpuName
         ram      = "$ram GB"
-        diskSize = ($diskSize -join ", ")
+        diskSize = $diskSize
         model    = $model
         wifiMac  = $wifiMac
     }
-
 } else {
-    $wifiMac = "NOT_FOUND"
-    Write-Host "ERROR: No Wi-Fi adapter found!" -ForegroundColor Red
-
-    Send-BuildEvent -Stage "JiraAsset" -Status "failed" -ErrorMsg "No Wi-Fi adapter found — MAC address could not be obtained. Jira asset may be incomplete."
+    Send-BuildEvent -Stage "JiraAsset" -Status "failed" -ErrorMsg "No Wi-Fi adapter found — MAC address could not be obtained"
 }
+#
+# BuildComplete
 
 
 
