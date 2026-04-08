@@ -115,23 +115,33 @@ $ram      = [math]::Round((Get-CimInstance Win32_PhysicalMemory | Measure-Object
 $diskSize = (Get-CimInstance Win32_DiskDrive | ForEach-Object { "{0} GB" -f ([math]::Round($_.Size / 1GB, 2)) }) -join ", "
 $model    = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
 
-# WiFi MAC collection with robust empty/null checking
-$wifiAdapter = Get-NetAdapter | Where-Object {
-    $_.Name -like "*Wi-Fi*" -or
-    $_.InterfaceDescription -match "Wireless|Wi-Fi|802\.11|MediaTek|Intel.*WiFi|Qualcomm.*WiFi|Realtek.*WiFi"
-} | Select-Object -First 1
+#=======================================================================
+#   [OS] WiFi MAC Collection
+#   Filters out adapters with empty MACs (virtual/secondary adapters)
+#   and sorts by name so primary WiFi adapter is always selected first.
+#   The Intel Wi-Fi 7 BE201 creates multiple virtual adapters (WiFi,
+#   WiFi 2, WiFi 3, WiFi 4) where only the primary has a valid MAC.
+#=======================================================================
 
-if ($wifiAdapter -and -not [string]::IsNullOrWhiteSpace($wifiAdapter.MacAddress)) {
+$wifiAdapter = Get-NetAdapter | Where-Object {
+    ($_.Name -like "*Wi-Fi*" -or
+     $_.InterfaceDescription -match "Wireless|Wi-Fi|802\.11|MediaTek|Intel.*WiFi|Qualcomm.*WiFi|Realtek.*WiFi") -and
+    -not [string]::IsNullOrWhiteSpace($_.MacAddress)
+} | Sort-Object Name | Select-Object -First 1
+
+if ($wifiAdapter) {
     $wifiMac = ($wifiAdapter.MacAddress) -replace '-', ''
     Write-Host "Wi-Fi MAC : $wifiMac" -ForegroundColor Green
+    Write-Host "Adapter   : $($wifiAdapter.Name) - $($wifiAdapter.InterfaceDescription)" -ForegroundColor Gray
 } else {
     $wifiMac = "NOT_FOUND"
-    Write-Host "ERROR: No Wi-Fi adapter found or MAC address is empty!" -ForegroundColor Red
-    Write-Host "Adapter found : $($null -ne $wifiAdapter)" -ForegroundColor Yellow
-    if ($wifiAdapter) {
-        Write-Host "Adapter name  : $($wifiAdapter.Name)" -ForegroundColor Yellow
-        Write-Host "Adapter MAC   : '$($wifiAdapter.MacAddress)'" -ForegroundColor Yellow
-        Write-Host "Interface     : $($wifiAdapter.InterfaceDescription)" -ForegroundColor Yellow
+    Write-Host "ERROR: No Wi-Fi adapter found with a valid MAC address!" -ForegroundColor Red
+    Write-Host "All Wi-Fi adapters detected:" -ForegroundColor Yellow
+    Get-NetAdapter | Where-Object {
+        $_.Name -like "*Wi-Fi*" -or
+        $_.InterfaceDescription -match "Wireless|Wi-Fi|802\.11"
+    } | ForEach-Object {
+        Write-Host "  $($_.Name) | MAC: '$($_.MacAddress)' | $($_.InterfaceDescription)" -ForegroundColor Yellow
     }
 }
 
@@ -140,7 +150,7 @@ Write-Host "RAM       : $ram GB"   -ForegroundColor Gray
 Write-Host "Disk      : $diskSize" -ForegroundColor Gray
 Write-Host "Model     : $model"    -ForegroundColor Gray
 
-# Reusable MAC validity check used by both Meraki and JiraAsset stages
+# Reusable MAC validity check - used by both Meraki and JiraAsset stages
 $hasMac = (-not [string]::IsNullOrWhiteSpace($wifiMac)) -and ($wifiMac -ne "NOT_FOUND")
 
 #=======================================================================
