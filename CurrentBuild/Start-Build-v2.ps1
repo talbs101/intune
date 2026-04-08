@@ -237,10 +237,10 @@ try {
         -ArgumentList "/install /quiet /norestart /CID=$CrowdStrikeSecret" `
         -Wait -NoNewWindow
 
-    Send-BuildEvent -Stage "CrowdStrikeInstalled"
+    Send-BuildEvent -Stage "CrowdstrikeInstalled"
 
 } catch {
-    Send-BuildEvent -Stage "CrowdStrikeInstalled" -Status "failed" -ErrorMsg $_.Exception.Message
+    Send-BuildEvent -Stage "CrowdstrikeInstalled" -Status "failed" -ErrorMsg $_.Exception.Message
     Write-Warning "CrowdStrike install failed: $_"
 }
 
