@@ -99,11 +99,17 @@ $wifiAdapter = Get-NetAdapter | Where-Object {
     $_.InterfaceDescription -match "Wireless|Wi-Fi|802\.11|MediaTek|Intel.*WiFi|Qualcomm.*WiFi|Realtek.*WiFi"
 } | Select-Object -First 1
 
-$wifiMac = if ($wifiAdapter) {
-    ($wifiAdapter.MacAddress) -replace '-', ''
+if ($wifiAdapter -and -not [string]::IsNullOrWhiteSpace($wifiAdapter.MacAddress)) {
+    $wifiMac = ($wifiAdapter.MacAddress) -replace '-', ''
+    Write-Host "Wi-Fi MAC : $wifiMac" -ForegroundColor Green
 } else {
-    Write-Host "ERROR: No Wi-Fi adapter found!" -ForegroundColor Red
-    "NOT_FOUND"
+    $wifiMac = "NOT_FOUND"
+    Write-Host "ERROR: No Wi-Fi adapter found or MAC address is empty!" -ForegroundColor Red
+    Write-Host "Adapter found: $($wifiAdapter -ne $null)" -ForegroundColor Yellow
+    if ($wifiAdapter) {
+        Write-Host "Adapter name: $($wifiAdapter.Name)" -ForegroundColor Yellow
+        Write-Host "Adapter MAC : '$($wifiAdapter.MacAddress)'" -ForegroundColor Yellow
+    }
 }
 
 Write-Host "CPU       : $cpuName"  -ForegroundColor Gray
