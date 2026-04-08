@@ -78,6 +78,26 @@ if (Test-Path $DeviceNameFile) {
 $buildType = if (Test-Path $BuildTypeFile) { (Get-Content $BuildTypeFile -Raw).Trim().Trim([char]0xFEFF) } else { "Standard" }
 $builder   = if (Test-Path $BuilderFile)   { (Get-Content $BuilderFile   -Raw).Trim().Trim([char]0xFEFF) } else { "Unknown" }
 
+# Collect serial immediately — needed for ALL Send-BuildEvent calls
+$serial = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
+Write-Host "Serial: $serial" -ForegroundColor Gray
+
+#=======================================================================
+#   [OS] Decrypt BitLocker
+#=======================================================================
+
+Write-Host -ForegroundColor Green "Decrypting BitLocker"
+Manage-bde -off C:
+
+#=======================================================================
+#   [OS] Enable Location Services
+#=======================================================================
+
+Write-Host -ForegroundColor Green "Enabling Location Services"
+$registryPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location"
+if (-not (Test-Path $registryPath)) { New-Item -Path $registryPath -Force | Out-Null }
+Set-ItemProperty -Path $registryPath -Name "Value" -Type String -Value "Allow"
+
 #=======================================================================
 #   [OS] Install SimpleHelp
 #=======================================================================
@@ -109,27 +129,6 @@ try {
     Send-BuildEvent -Stage "SimpleHelpInstalled" -Status "failed" -ErrorMsg $_.Exception.Message
     Write-Warning "SimpleHelp install failed: $_"
 }
-
-
-
-
-
-#=======================================================================
-#   [OS] Decrypt BitLocker
-#=======================================================================
-
-Write-Host -ForegroundColor Green "Decrypting BitLocker"
-Manage-bde -off C:
-
-#=======================================================================
-#   [OS] Enable Location Services
-#=======================================================================
-
-Write-Host -ForegroundColor Green "Enabling Location Services"
-$registryPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location"
-if (-not (Test-Path $registryPath)) { New-Item -Path $registryPath -Force | Out-Null }
-Set-ItemProperty -Path $registryPath -Name "Value" -Type String -Value "Allow"
-
 
 #=======================================================================
 #   [OS] Install Office
@@ -240,7 +239,7 @@ $cpuName  = (Get-CimInstance Win32_Processor).Name
 $ram      = [math]::Round((Get-CimInstance Win32_PhysicalMemory | Measure-Object -Property Capacity -Sum).Sum / 1GB, 2)
 $diskSize = Get-CimInstance Win32_DiskDrive | ForEach-Object { "{0} GB" -f ([math]::Round($_.Size / 1GB, 2)) }
 $model    = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
-$serial   = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
+# $serial already set above — don't re-declare here
 
 $wifiAdapter = Get-NetAdapter | Where-Object {
     $_.Name -like "*Wi-Fi*" -or
