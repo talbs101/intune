@@ -244,38 +244,54 @@ try {
     Write-Warning "CrowdStrike install failed: $_"
 }
 
+
 #=======================================================================
 #   [OS] Enroll in Autopilot
 #=======================================================================
 
-Write-Host -ForegroundColor Green "Starting Autopilot Registration"
+# Read Build Type and Builder
 
-try {
-    $GroupTag = if (Test-Path $BuildTypeFile) {
-        (Get-Content $BuildTypeFile -Raw).Trim()
-    } else { "Standard" }
+$BuildType = "C:\OSDCloud\BuildType.txt"
+$Builder = "C:\OSDCloud\Builder.txt"
 
-    Import-Module OSD
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-
-    $autoPilotScriptPath = "C:\OSDCloud\Scripts\Get-WindowsAutoPilotInfo.ps1"
-
-    & $autoPilotScriptPath @{
-        Online               = $true
-        TenantId             = $AutopilotTenantId
-        AppId                = $AutopilotAppId
-        AppSecret            = $AutopilotAppSecret
-        GroupTag             = $GroupTag
-        Assign               = $true
-        AssignedComputerName = $deviceName
-    }
-
-    Send-BuildEvent -Stage "AutopilotEnrolled" -Extra @{ groupTag = $GroupTag }
-
-} catch {
-    Send-BuildEvent -Stage "AutopilotEnrolled" -Status "failed" -ErrorMsg $_.Exception.Message
-    Write-Warning "Autopilot enrolment failed: $_"
+if (Test-Path $BuildType) {
+    $GroupTagName = Get-Content "C:\OSDCloud\BuildType.txt" -Raw
+    $GroupTag = $GroupTagName.Trim()
 }
+else {
+    Write-Warning "Build Type file not found. Autopilot will register with Standard Group Tag ."
+    $GroupTag = "Standard"
+        
+}
+
+Write-Host -ForegroundColor Green "Starting Autopilot Registration"
+        
+import-module OSD 
+
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        
+# Define the full path to the AutoPilot script
+$autoPilotScriptPath = "C:\OSDCloud\Scripts\Get-WindowsAutoPilotInfo.ps1"
+
+# Prepare parameters for the Autopilot script
+$AutopilotParams = @{
+    Online               = $true
+    TenantId             = $AutopilotTenantId
+    AppId                = $AutopilotAppId
+    AppSecret            = $AutopilotAppSecret
+    GroupTag             = $GroupTag
+    Assign               = $true
+    AssignedComputerName = $deviceName
+}
+
+# Invoke the script file (this will load the function and execute it)
+& $autoPilotScriptPath @AutopilotParams
+
+Send-BuildEvent -Stage "AutopilotEnrolled" -Extra @{ groupTag = $GroupTag }
+
+# Display the equivalent command (if you still want to log it)
+Write-Host -ForegroundColor Gray "Get-WindowsAutopilotInfo -Online -GroupTag $GroupTag -Assign -AssignedComputerName $deviceName"
+
 
 #=======================================================================
 #   [OS] Stage: Meraki Whitelist
