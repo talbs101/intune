@@ -48,7 +48,7 @@ function Send-BuildEvent {
         $response = Invoke-RestMethod -Uri $LogicAppUrl -Method Post -Body $payload `
             -ContentType "application/json" -ErrorAction Stop
 
-        Write-Host "[$Stage] Event sent — $Status" -ForegroundColor Cyan
+        Write-Host "[$Stage] Event sent - $Status" -ForegroundColor Cyan
         return $response
 
     } catch {
@@ -85,7 +85,7 @@ Write-Host "Builder   : $builder"    -ForegroundColor Gray
 
 #=======================================================================
 #   [OS] Collect Hardware Info
-#   Collected once here — available to all stages below including
+#   Collected once here - available to all stages below including
 #   Meraki (needs wifiMac) and JiraAsset (needs all fields)
 #=======================================================================
 
@@ -262,8 +262,8 @@ Write-Host -ForegroundColor Green "Sending Meraki whitelist event"
 if ($wifiMac -ne "NOT_FOUND") {
     Send-BuildEvent -Stage "Meraki" -Extra @{ wifiMac = $wifiMac }
 } else {
-    Send-BuildEvent -Stage "Meraki" -Status "failed" -ErrorMsg "No Wi-Fi adapter found — cannot whitelist device in Meraki"
-    Write-Warning "Meraki whitelist skipped — no Wi-Fi MAC address available"
+    Send-BuildEvent -Stage "Meraki" -Status "failed" -ErrorMsg "No Wi-Fi adapter found - cannot whitelist device in Meraki"
+    Write-Warning "Meraki whitelist skipped - no Wi-Fi MAC address available"
 }
 
 #=======================================================================
@@ -282,12 +282,12 @@ if ($wifiMac -ne "NOT_FOUND") {
         wifiMac  = $wifiMac
     }
 } else {
-    Send-BuildEvent -Stage "JiraAsset" -Status "failed" -ErrorMsg "No Wi-Fi adapter found — MAC address could not be obtained. Jira asset may be incomplete."
+    Send-BuildEvent -Stage "JiraAsset" -Status "failed" -ErrorMsg "No Wi-Fi adapter found - MAC address could not be obtained. Jira asset may be incomplete."
 }
 
 #=======================================================================
 #   [OS] Stage: BuildComplete
-#   Final event — Logic App transitions Jira ticket and sends email
+#   Final event - Logic App transitions Jira ticket and sends email
 #=======================================================================
 
 Send-BuildEvent -Stage "BuildComplete"
