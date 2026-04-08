@@ -85,7 +85,7 @@ $builder    = $null
 #================================================
 
 $form                  = New-Object System.Windows.Forms.Form
-$form.Text             = "IT Operations — Laptop Build"
+$form.Text             = "Laptop Build"
 $form.Size             = New-Object System.Drawing.Size(420, 420)
 $form.StartPosition    = "CenterScreen"
 $form.BackColor        = [System.Drawing.Color]::FromArgb(245, 247, 250)
