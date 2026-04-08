@@ -10,64 +10,12 @@ $Office365Url       = $env:BUILD_Office365Url
 $Office365XMLUrl    = $env:BUILD_Office365XMLUrl
 $CrowdStrikeUrl     = $env:BUILD_CrowdStrikeUrl
 $CrowdStrikeSecret  = $env:BUILD_CrowdStrikeSecret
-$LogicAppUrl        = $env:BUILD_LogicAppUrl
+$LogicAppUrl        = $env:BUILD_LogicAppUrl2
 $AutopilotTenantId  = $env:BUILD_AutopilotTenantId
 $AutopilotAppId     = $env:BUILD_AutopilotAppId
 $AutopilotAppSecret = $env:BUILD_AutopilotAppSecret
 $Office2019Url      = $env:BUILD_Office2019Url
 $Office2019XMLUrl   = $env:BUILD_Office2019XMLUrl
-
-#=======================================================================
-#   [OS] Get Computer Name / Build Info
-#=======================================================================
-
-$DeviceNameFile = "C:\OSDCloud\DeviceName.txt"
-$BuildTypeFile  = "C:\OSDCloud\BuildType.txt"
-$BuilderFile    = "C:\OSDCloud\Builder.txt"
-
-if (Test-Path $DeviceNameFile) {
-    $deviceName = (Get-Content $DeviceNameFile -Raw).Trim()
-} else {
-    Write-Warning "DeviceName file not found. Using $env:COMPUTERNAME"
-    $deviceName = $env:COMPUTERNAME
-}
-
-$buildType = if (Test-Path $BuildTypeFile) { (Get-Content $BuildTypeFile -Raw).Trim().Trim([char]0xFEFF) } else { "Standard" }
-$builder   = if (Test-Path $BuilderFile)   { (Get-Content $BuilderFile   -Raw).Trim().Trim([char]0xFEFF) } else { "Unknown" }
-
-#=======================================================================
-#   [OS] Collect Hardware Info (used throughout)
-#=======================================================================
-
-$cpuName  = (Get-CimInstance Win32_Processor).Name
-$ram      = [math]::Round((Get-CimInstance Win32_PhysicalMemory | Measure-Object -Property Capacity -Sum).Sum / 1GB, 2)
-$diskSize = Get-CimInstance Win32_DiskDrive | ForEach-Object { "{0} GB" -f ([math]::Round($_.Size / 1GB, 2)) }
-$model    = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
-$serial   = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
-
-$wifiAdapter = Get-NetAdapter | Where-Object {
-    $_.Name -like "*Wi-Fi*" -or
-    $_.InterfaceDescription -match "Wireless|Wi-Fi|802\.11|MediaTek|Intel.*WiFi|Qualcomm.*WiFi|Realtek.*WiFi"
-} | Select-Object -First 1
-
-if ($wifiAdapter) {
-    $wifiMac = ($wifiAdapter.MacAddress) -replace '-', ''
-    Write-Host "Wi-Fi MAC Address: $wifiMac" -ForegroundColor Green
-
-    Send-BuildEvent -Stage "JiraAsset" -Status "success" -Extra @{
-        cpuName  = $cpuName
-        ram      = "$ram GB"
-        diskSize = ($diskSize -join ", ")
-        model    = $model
-        wifiMac  = $wifiMac
-    }
-
-} else {
-    $wifiMac = "NOT_FOUND"
-    Write-Host "ERROR: No Wi-Fi adapter found!" -ForegroundColor Red
-
-    Send-BuildEvent -Stage "JiraAsset" -Status "failed" -ErrorMsg "No Wi-Fi adapter found — MAC address could not be obtained. Jira asset may be incomplete."
-}
 
 #=======================================================================
 #   [OS] Send-BuildEvent Helper Function
@@ -113,27 +61,58 @@ function Send-BuildEvent {
 
 
 #=======================================================================
-#   [OS] Stage: SetupStarted
+#   [OS] Get Computer Name / Build Info
 #=======================================================================
 
-$buildRecord = Send-BuildEvent -Stage "SetupStarted" -Extra @{
-    email     = "james.talbot@stmonicatrust.org.uk"
-    cpuName   = $cpuName
-    ram       = "$ram GB"
-    diskSize  = ($diskSize -join ", ")
-    model     = $model
-    wifiMac   = $wifiMac
+$DeviceNameFile = "C:\OSDCloud\DeviceName.txt"
+$BuildTypeFile  = "C:\OSDCloud\BuildType.txt"
+$BuilderFile    = "C:\OSDCloud\Builder.txt"
+
+if (Test-Path $DeviceNameFile) {
+    $deviceName = (Get-Content $DeviceNameFile -Raw).Trim()
+} else {
+    Write-Warning "DeviceName file not found. Using $env:COMPUTERNAME"
+    $deviceName = $env:COMPUTERNAME
 }
 
-# Log what was created — useful for debugging on the device
-if ($buildRecord) {
-    Write-Host "Jira Ticket  : $($buildRecord.jiraIssueKey)"   -ForegroundColor Green
-    Write-Host "Asset Key    : $($buildRecord.assetObjectKey)" -ForegroundColor Green
-    Write-Host "Asset ID     : $($buildRecord.assetObjectId)"  -ForegroundColor Green
+$buildType = if (Test-Path $BuildTypeFile) { (Get-Content $BuildTypeFile -Raw).Trim().Trim([char]0xFEFF) } else { "Standard" }
+$builder   = if (Test-Path $BuilderFile)   { (Get-Content $BuilderFile   -Raw).Trim().Trim([char]0xFEFF) } else { "Unknown" }
 
-    # Optionally write to a local file in case you need to check it mid-build
-    $buildRecord | ConvertTo-Json | Out-File "C:\OSDCloud\BuildRecord.json" -Encoding utf8
+#=======================================================================
+#   [OS] Install SimpleHelp
+#=======================================================================
+
+Write-Host -ForegroundColor Green "Installing SimpleHelp from Azure"
+
+try {
+    # Define local download path
+    $downloadPath = "C:\Temp\Remote-Access-windows64-online.exe"
+
+    # Ensure C:\Temp exists
+    if (-Not (Test-Path -Path "C:\Temp")) {
+        New-Item -Path "C:\Temp" -ItemType Directory | Out-Null
+    }
+
+    # Download the file
+    Invoke-WebRequest -Uri $SimpleHelpUrl -OutFile $downloadPath
+
+    # Run the installer
+    Start-Process -FilePath $downloadPath -ArgumentList @(
+        "/S", "/NAME=AUTODETECT",
+        "/HOST=https://sh.stmonicatrust.org.uk:444",
+        "/NOSHORTCUTS"
+    ) -Wait -NoNewWindow
+
+    Send-BuildEvent -Stage "SimpleHelpInstalled"
+
+} catch {
+    Send-BuildEvent -Stage "SimpleHelpInstalled" -Status "failed" -ErrorMsg $_.Exception.Message
+    Write-Warning "SimpleHelp install failed: $_"
 }
+
+
+
+
 
 #=======================================================================
 #   [OS] Decrypt BitLocker
@@ -193,26 +172,7 @@ try {
     Write-Warning "Office install failed: $_"
 }
 
-#=======================================================================
-#   [OS] Install Company Portal
-#=======================================================================
 
-Write-Host -ForegroundColor Green "Installing Company Portal"
-
-try {
-    $packagePath    = "C:\OSDCloud\CompanyPortal\CompanyPortal.appxbundle"
-    $dependencyPath = "C:\OSDCloud\CompanyPortal\Dependencies"
-    $dependencies   = Get-ChildItem -Path $dependencyPath -Filter *.appx | ForEach-Object { $_.FullName }
-
-    Add-AppxProvisionedPackage -Online -PackagePath $packagePath `
-        -DependencyPackagePath $dependencies -SkipLicense
-
-    Send-BuildEvent -Stage "CompanyPortalInstalled"
-
-} catch {
-    Send-BuildEvent -Stage "CompanyPortalInstalled" -Status "failed" -ErrorMsg $_.Exception.Message
-    Write-Warning "Company Portal install failed: $_"
-}
 
 #=======================================================================
 #   [OS] Install CrowdStrike
@@ -272,6 +232,39 @@ try {
 #=======================================================================
 #   [OS] Stage: Create Jira Asset
 #=======================================================================
+#=======================================================================
+#   [OS] Collect Hardware Info (used throughout)
+#=======================================================================
+
+$cpuName  = (Get-CimInstance Win32_Processor).Name
+$ram      = [math]::Round((Get-CimInstance Win32_PhysicalMemory | Measure-Object -Property Capacity -Sum).Sum / 1GB, 2)
+$diskSize = Get-CimInstance Win32_DiskDrive | ForEach-Object { "{0} GB" -f ([math]::Round($_.Size / 1GB, 2)) }
+$model    = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
+$serial   = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
+
+$wifiAdapter = Get-NetAdapter | Where-Object {
+    $_.Name -like "*Wi-Fi*" -or
+    $_.InterfaceDescription -match "Wireless|Wi-Fi|802\.11|MediaTek|Intel.*WiFi|Qualcomm.*WiFi|Realtek.*WiFi"
+} | Select-Object -First 1
+
+if ($wifiAdapter) {
+    $wifiMac = ($wifiAdapter.MacAddress) -replace '-', ''
+    Write-Host "Wi-Fi MAC Address: $wifiMac" -ForegroundColor Green
+
+    Send-BuildEvent -Stage "JiraAsset" -Status "success" -Extra @{
+        cpuName  = $cpuName
+        ram      = "$ram GB"
+        diskSize = ($diskSize -join ", ")
+        model    = $model
+        wifiMac  = $wifiMac
+    }
+
+} else {
+    $wifiMac = "NOT_FOUND"
+    Write-Host "ERROR: No Wi-Fi adapter found!" -ForegroundColor Red
+
+    Send-BuildEvent -Stage "JiraAsset" -Status "failed" -ErrorMsg "No Wi-Fi adapter found — MAC address could not be obtained. Jira asset may be incomplete."
+}
 
 
 
