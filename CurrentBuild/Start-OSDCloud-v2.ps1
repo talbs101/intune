@@ -14,7 +14,7 @@ $secretsFile = 'X:\OSDCloud\Config\Scripts\SetupComplete\Secrets.ps1'
 if (Test-Path $secretsFile) {
     . $secretsFile
 } else {
-    Write-Warning "Secrets file not found at $secretsFile — build events will not fire"
+    Write-Warning "Secrets file not found at $secretsFile - build events will not fire"
 }
 
 $LogicAppUrl = $env:BUILD_LogicAppUrl2
@@ -50,7 +50,7 @@ function Send-BuildEvent {
         $response = Invoke-RestMethod -Uri $LogicAppUrl -Method Post -Body $payload `
             -ContentType "application/json" -ErrorAction Stop
 
-        Write-Host "[$Stage] Event sent — $Status" -ForegroundColor Cyan
+        Write-Host "[$Stage] Event sent - $Status" -ForegroundColor Cyan
         return $response
 
     } catch {
@@ -61,7 +61,7 @@ function Send-BuildEvent {
 
 #================================================
 #   [PreOS] Collect Serial Number
-#   Available in WinPE — needed for Table Storage key and Jira asset
+#   Available in WinPE - needed for Table Storage key and Jira asset
 #================================================
 
 $serial = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
@@ -81,11 +81,11 @@ $builder    = $null
 #================================================
 #   [PreOS] Build Selector Form
 #   No nested function definitions or Add_Click scriptblocks
-#   — IEX/Invoke-WebPSScript compatible
+#   - IEX/Invoke-WebPSScript compatible
 #================================================
 
 $form                  = New-Object System.Windows.Forms.Form
-$form.Text             = "Laptop Build"
+$form.Text             = "IT Operations - Laptop Build"
 $form.Size             = New-Object System.Drawing.Size(420, 420)
 $form.StartPosition    = "CenterScreen"
 $form.BackColor        = [System.Drawing.Color]::FromArgb(245, 247, 250)
@@ -94,7 +94,7 @@ $form.MaximizeBox      = $false
 $form.MinimizeBox      = $false
 $form.Font             = New-Object System.Drawing.Font("Segoe UI", 9)
 
-# ── Header bar ──────────────────────────────────────────────
+# -- Header bar ----------------------------------------------
 $header              = New-Object System.Windows.Forms.Panel
 $header.Size         = New-Object System.Drawing.Size(420, 60)
 $header.Location     = New-Object System.Drawing.Point(0, 0)
@@ -102,7 +102,7 @@ $header.BackColor    = [System.Drawing.Color]::FromArgb(17, 24, 39)
 $form.Controls.Add($header)
 
 $headerLabel           = New-Object System.Windows.Forms.Label
-$headerLabel.Text      = "Laptop Build — St Monica Trust IT"
+$headerLabel.Text      = "Laptop Build - St Monica Trust IT"
 $headerLabel.Font      = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
 $headerLabel.ForeColor = [System.Drawing.Color]::White
 $headerLabel.AutoSize  = $true
@@ -117,7 +117,7 @@ $subLabel.AutoSize     = $true
 $subLabel.Location     = New-Object System.Drawing.Point(20, 34)
 $header.Controls.Add($subLabel)
 
-# ── Serial number display ────────────────────────────────────
+# -- Serial number display ------------------------------------
 $serialPanel             = New-Object System.Windows.Forms.Panel
 $serialPanel.Size        = New-Object System.Drawing.Size(378, 36)
 $serialPanel.Location    = New-Object System.Drawing.Point(20, 76)
@@ -141,7 +141,7 @@ $serialValue.AutoSize  = $true
 $serialValue.Location  = New-Object System.Drawing.Point(10, 18)
 $serialPanel.Controls.Add($serialValue)
 
-# ── Device Name label ────────────────────────────────────────
+# -- Device Name label ----------------------------------------
 $lblDevice           = New-Object System.Windows.Forms.Label
 $lblDevice.Text      = "Device Name"
 $lblDevice.Font      = New-Object System.Drawing.Font("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
@@ -150,7 +150,7 @@ $lblDevice.AutoSize  = $true
 $lblDevice.Location  = New-Object System.Drawing.Point(20, 130)
 $form.Controls.Add($lblDevice)
 
-# ── Device Name input ────────────────────────────────────────
+# -- Device Name input ----------------------------------------
 $txtDevice             = New-Object System.Windows.Forms.TextBox
 $txtDevice.Location    = New-Object System.Drawing.Point(20, 148)
 $txtDevice.Size        = New-Object System.Drawing.Size(378, 28)
@@ -160,7 +160,7 @@ $txtDevice.BackColor   = [System.Drawing.Color]::White
 $txtDevice.BorderStyle = "FixedSingle"
 $form.Controls.Add($txtDevice)
 
-# ── Build Type label ─────────────────────────────────────────
+# -- Build Type label -----------------------------------------
 $lblBuild            = New-Object System.Windows.Forms.Label
 $lblBuild.Text       = "Build Type"
 $lblBuild.Font       = New-Object System.Drawing.Font("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
@@ -169,7 +169,7 @@ $lblBuild.AutoSize   = $true
 $lblBuild.Location   = New-Object System.Drawing.Point(20, 192)
 $form.Controls.Add($lblBuild)
 
-# ── Build Type dropdown ──────────────────────────────────────
+# -- Build Type dropdown --------------------------------------
 $comboBuild               = New-Object System.Windows.Forms.ComboBox
 $comboBuild.Location      = New-Object System.Drawing.Point(20, 210)
 $comboBuild.Size          = New-Object System.Drawing.Size(378, 28)
@@ -179,7 +179,7 @@ $comboBuild.BackColor     = [System.Drawing.Color]::White
 $comboBuild.Items.AddRange(@("Standard", "Care", "Kiosk-Chapel"))
 $form.Controls.Add($comboBuild)
 
-# ── Builder label ────────────────────────────────────────────
+# -- Builder label --------------------------------------------
 $lblBuilder           = New-Object System.Windows.Forms.Label
 $lblBuilder.Text      = "Builder"
 $lblBuilder.Font      = New-Object System.Drawing.Font("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
@@ -188,7 +188,7 @@ $lblBuilder.AutoSize  = $true
 $lblBuilder.Location  = New-Object System.Drawing.Point(20, 254)
 $form.Controls.Add($lblBuilder)
 
-# ── Builder dropdown ─────────────────────────────────────────
+# -- Builder dropdown -----------------------------------------
 $comboBuilder               = New-Object System.Windows.Forms.ComboBox
 $comboBuilder.Location      = New-Object System.Drawing.Point(20, 272)
 $comboBuilder.Size          = New-Object System.Drawing.Size(378, 28)
@@ -204,7 +204,7 @@ $comboBuilder.Items.AddRange(@(
 ))
 $form.Controls.Add($comboBuilder)
 
-# ── Start Build button ───────────────────────────────────────
+# -- Start Build button ---------------------------------------
 $btnStart                           = New-Object System.Windows.Forms.Button
 $btnStart.Location                  = New-Object System.Drawing.Point(20, 326)
 $btnStart.Size                      = New-Object System.Drawing.Size(378, 44)
@@ -218,7 +218,7 @@ $btnStart.DialogResult              = [System.Windows.Forms.DialogResult]::OK
 $form.Controls.Add($btnStart)
 $form.AcceptButton                  = $btnStart
 
-# ── Show form ────────────────────────────────────────────────
+# -- Show form ------------------------------------------------
 $result = $form.ShowDialog()
 
 if ($result -ne [System.Windows.Forms.DialogResult]::OK) {
@@ -226,12 +226,12 @@ if ($result -ne [System.Windows.Forms.DialogResult]::OK) {
     exit
 }
 
-# ── Read values ──────────────────────────────────────────────
+# -- Read values ----------------------------------------------
 $deviceName = $txtDevice.Text.Trim()
 $buildType  = $comboBuild.SelectedItem
 $builder    = $comboBuilder.SelectedItem
 
-# ── Validate after form closes ───────────────────────────────
+# -- Validate after form closes -------------------------------
 if ([string]::IsNullOrWhiteSpace($deviceName)) {
     [System.Windows.Forms.MessageBox]::Show(
         "Please enter a device name.",
