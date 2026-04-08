@@ -78,14 +78,35 @@ $buildType = if (Test-Path $BuildTypeFile) { (Get-Content $BuildTypeFile -Raw).T
 $builder   = if (Test-Path $BuilderFile)   { (Get-Content $BuilderFile   -Raw).Trim().Trim([char]0xFEFF) } else { "Unknown" }
 
 $serial = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
-Write-Host "Serial    : $serial"    -ForegroundColor Gray
+Write-Host "Serial    : $serial"     -ForegroundColor Gray
 Write-Host "Device    : $deviceName" -ForegroundColor Gray
 Write-Host "Build Type: $buildType"  -ForegroundColor Gray
 Write-Host "Builder   : $builder"    -ForegroundColor Gray
 
 #=======================================================================
+#   [OS] Decrypt BitLocker
+#=======================================================================
+
+Write-Host -ForegroundColor Green "Decrypting BitLocker"
+Manage-bde -off C:
+
+#=======================================================================
+#   [OS] Enable Location Services
+#   Required for Intune to obtain the WiFi MAC address
+#=======================================================================
+
+Write-Host -ForegroundColor Green "Enabling Location Services"
+$registryPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location"
+if (-not (Test-Path $registryPath)) { New-Item -Path $registryPath -Force | Out-Null }
+Set-ItemProperty -Path $registryPath -Name "Value" -Type String -Value "Allow"
+
+# Brief pause to allow Location Services to apply before MAC collection
+Write-Host -ForegroundColor Gray "Waiting for Location Services to apply..."
+Start-Sleep -Seconds 5
+
+#=======================================================================
 #   [OS] Collect Hardware Info
-#   Collected once here - available to all stages below including
+#   Collected once here - available to all stages including
 #   Meraki (needs wifiMac) and JiraAsset (needs all fields)
 #=======================================================================
 
@@ -94,6 +115,7 @@ $ram      = [math]::Round((Get-CimInstance Win32_PhysicalMemory | Measure-Object
 $diskSize = (Get-CimInstance Win32_DiskDrive | ForEach-Object { "{0} GB" -f ([math]::Round($_.Size / 1GB, 2)) }) -join ", "
 $model    = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
 
+# WiFi MAC collection with robust empty/null checking
 $wifiAdapter = Get-NetAdapter | Where-Object {
     $_.Name -like "*Wi-Fi*" -or
     $_.InterfaceDescription -match "Wireless|Wi-Fi|802\.11|MediaTek|Intel.*WiFi|Qualcomm.*WiFi|Realtek.*WiFi"
@@ -105,10 +127,11 @@ if ($wifiAdapter -and -not [string]::IsNullOrWhiteSpace($wifiAdapter.MacAddress)
 } else {
     $wifiMac = "NOT_FOUND"
     Write-Host "ERROR: No Wi-Fi adapter found or MAC address is empty!" -ForegroundColor Red
-    Write-Host "Adapter found: $($wifiAdapter -ne $null)" -ForegroundColor Yellow
+    Write-Host "Adapter found : $($null -ne $wifiAdapter)" -ForegroundColor Yellow
     if ($wifiAdapter) {
-        Write-Host "Adapter name: $($wifiAdapter.Name)" -ForegroundColor Yellow
-        Write-Host "Adapter MAC : '$($wifiAdapter.MacAddress)'" -ForegroundColor Yellow
+        Write-Host "Adapter name  : $($wifiAdapter.Name)" -ForegroundColor Yellow
+        Write-Host "Adapter MAC   : '$($wifiAdapter.MacAddress)'" -ForegroundColor Yellow
+        Write-Host "Interface     : $($wifiAdapter.InterfaceDescription)" -ForegroundColor Yellow
     }
 }
 
@@ -116,23 +139,9 @@ Write-Host "CPU       : $cpuName"  -ForegroundColor Gray
 Write-Host "RAM       : $ram GB"   -ForegroundColor Gray
 Write-Host "Disk      : $diskSize" -ForegroundColor Gray
 Write-Host "Model     : $model"    -ForegroundColor Gray
-Write-Host "Wi-Fi MAC : $wifiMac"  -ForegroundColor Gray
 
-#=======================================================================
-#   [OS] Decrypt BitLocker
-#=======================================================================
-
-Write-Host -ForegroundColor Green "Decrypting BitLocker"
-Manage-bde -off C:
-
-#=======================================================================
-#   [OS] Enable Location Services
-#=======================================================================
-
-Write-Host -ForegroundColor Green "Enabling Location Services"
-$registryPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location"
-if (-not (Test-Path $registryPath)) { New-Item -Path $registryPath -Force | Out-Null }
-Set-ItemProperty -Path $registryPath -Name "Value" -Type String -Value "Allow"
+# Reusable MAC validity check used by both Meraki and JiraAsset stages
+$hasMac = (-not [string]::IsNullOrWhiteSpace($wifiMac)) -and ($wifiMac -ne "NOT_FOUND")
 
 #=======================================================================
 #   [OS] Install SimpleHelp
@@ -265,11 +274,11 @@ try {
 
 Write-Host -ForegroundColor Green "Sending Meraki whitelist event"
 
-if ($wifiMac -ne "NOT_FOUND") {
+if ($hasMac) {
     Send-BuildEvent -Stage "Meraki" -Extra @{ wifiMac = $wifiMac }
 } else {
-    Send-BuildEvent -Stage "Meraki" -Status "failed" -ErrorMsg "No Wi-Fi adapter found - cannot whitelist device in Meraki"
-    Write-Warning "Meraki whitelist skipped - no Wi-Fi MAC address available"
+    Send-BuildEvent -Stage "Meraki" -Status "failed" -ErrorMsg "No valid Wi-Fi MAC address - cannot whitelist device in Meraki"
+    Write-Warning "Meraki whitelist skipped - no valid MAC address available"
 }
 
 #=======================================================================
@@ -279,7 +288,7 @@ if ($wifiMac -ne "NOT_FOUND") {
 
 Write-Host -ForegroundColor Green "Sending Jira asset creation event"
 
-if ($wifiMac -ne "NOT_FOUND") {
+if ($hasMac) {
     Send-BuildEvent -Stage "JiraAsset" -Status "success" -Extra @{
         cpuName  = $cpuName
         ram      = "$ram GB"
@@ -288,7 +297,8 @@ if ($wifiMac -ne "NOT_FOUND") {
         wifiMac  = $wifiMac
     }
 } else {
-    Send-BuildEvent -Stage "JiraAsset" -Status "failed" -ErrorMsg "No Wi-Fi adapter found - MAC address could not be obtained. Jira asset may be incomplete."
+    Send-BuildEvent -Stage "JiraAsset" -Status "failed" -ErrorMsg "No valid Wi-Fi MAC address - Jira asset created without MAC"
+    Write-Warning "JiraAsset event sent with failure status - no valid MAC address"
 }
 
 #=======================================================================
