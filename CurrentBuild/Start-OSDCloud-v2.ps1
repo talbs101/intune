@@ -72,71 +72,117 @@ Write-Host -ForegroundColor Gray "Serial Number: $serial"
 #================================================
 
 Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName Microsoft.VisualBasic
+Add-Type -AssemblyName System.Drawing
 
-# Initialise so Send-BuildEvent doesn't error if form is cancelled
 $deviceName = $env:COMPUTERNAME
 $buildType  = $null
 $builder    = $null
 
-# ───────────────────────────────────────────────────────────────────────
-# Step 1: Ask for Device Name
-# ───────────────────────────────────────────────────────────────────────
+#================================================
+#   [PreOS] Build Selector Form — single screen
+#================================================
 
-$deviceName = [Microsoft.VisualBasic.Interaction]::InputBox(
-    "Enter the device name:",
-    "Device Name Required",
-    "$env:COMPUTERNAME"
-)
+$form                  = New-Object System.Windows.Forms.Form
+$form.Text             = "IT Operations — Laptop Build"
+$form.Size             = New-Object System.Drawing.Size(420, 420)
+$form.StartPosition    = "CenterScreen"
+$form.BackColor        = [System.Drawing.Color]::FromArgb(245, 247, 250)
+$form.FormBorderStyle  = "FixedDialog"
+$form.MaximizeBox      = $false
+$form.MinimizeBox      = $false
+$form.Font             = New-Object System.Drawing.Font("Segoe UI", 9)
 
-if ([string]::IsNullOrWhiteSpace($deviceName)) {
-    [System.Windows.Forms.MessageBox]::Show(
-        "You must enter a device name to continue.",
-        "Device Name Required",
-        [System.Windows.Forms.MessageBoxButtons]::OK,
-        [System.Windows.Forms.MessageBoxIcon]::Warning
-    )
-    exit
+# ── Header bar ──────────────────────────────────────────────
+$header              = New-Object System.Windows.Forms.Panel
+$header.Size         = New-Object System.Drawing.Size(420, 60)
+$header.Location     = New-Object System.Drawing.Point(0, 0)
+$header.BackColor    = [System.Drawing.Color]::FromArgb(17, 24, 39)
+$form.Controls.Add($header)
+
+$headerLabel           = New-Object System.Windows.Forms.Label
+$headerLabel.Text      = "Laptop Build — St Monica Trust IT"
+$headerLabel.Font      = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+$headerLabel.ForeColor = [System.Drawing.Color]::White
+$headerLabel.AutoSize  = $true
+$headerLabel.Location  = New-Object System.Drawing.Point(20, 10)
+$header.Controls.Add($headerLabel)
+
+$subLabel              = New-Object System.Windows.Forms.Label
+$subLabel.Text         = "Complete all fields before starting the build"
+$subLabel.Font         = New-Object System.Drawing.Font("Segoe UI", 8)
+$subLabel.ForeColor    = [System.Drawing.Color]::FromArgb(156, 163, 175)
+$subLabel.AutoSize     = $true
+$subLabel.Location     = New-Object System.Drawing.Point(20, 34)
+$header.Controls.Add($subLabel)
+
+# ── Serial number display (read only, for verification) ─────
+$serialPanel             = New-Object System.Windows.Forms.Panel
+$serialPanel.Size        = New-Object System.Drawing.Size(378, 36)
+$serialPanel.Location    = New-Object System.Drawing.Point(20, 76)
+$serialPanel.BackColor   = [System.Drawing.Color]::FromArgb(239, 246, 255)
+$serialPanel.BorderStyle = "FixedSingle"
+$form.Controls.Add($serialPanel)
+
+$serialLabel           = New-Object System.Windows.Forms.Label
+$serialLabel.Text      = "Serial Number"
+$serialLabel.Font      = New-Object System.Drawing.Font("Segoe UI", 7, [System.Drawing.FontStyle]::Bold)
+$serialLabel.ForeColor = [System.Drawing.Color]::FromArgb(37, 99, 235)
+$serialLabel.AutoSize  = $true
+$serialLabel.Location  = New-Object System.Drawing.Point(10, 4)
+$serialPanel.Controls.Add($serialLabel)
+
+$serialValue           = New-Object System.Windows.Forms.Label
+$serialValue.Text      = $serial
+$serialValue.Font      = New-Object System.Drawing.Font("Consolas", 9, [System.Drawing.FontStyle]::Bold)
+$serialValue.ForeColor = [System.Drawing.Color]::FromArgb(17, 24, 39)
+$serialValue.AutoSize  = $true
+$serialValue.Location  = New-Object System.Drawing.Point(10, 18)
+$serialPanel.Controls.Add($serialValue)
+
+# ── Helper to add a field label ─────────────────────────────
+function Add-FieldLabel($text, $y) {
+    $lbl           = New-Object System.Windows.Forms.Label
+    $lbl.Text      = $text
+    $lbl.Font      = New-Object System.Drawing.Font("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
+    $lbl.ForeColor = [System.Drawing.Color]::FromArgb(55, 65, 81)
+    $lbl.AutoSize  = $true
+    $lbl.Location  = New-Object System.Drawing.Point(20, $y)
+    $form.Controls.Add($lbl)
 }
 
-# ───────────────────────────────────────────────────────────────────────
-# Step 2: Build Type / Builder Form
-# ───────────────────────────────────────────────────────────────────────
+# ── Device Name ──────────────────────────────────────────────
+Add-FieldLabel "Device Name" 130
 
-$form = New-Object System.Windows.Forms.Form
-$form.Text          = "Build Selector"
-$form.Size          = New-Object System.Drawing.Size(350,300)
-$form.StartPosition = "CenterScreen"
+$txtDevice             = New-Object System.Windows.Forms.TextBox
+$txtDevice.Location    = New-Object System.Drawing.Point(20, 148)
+$txtDevice.Size        = New-Object System.Drawing.Size(378, 28)
+$txtDevice.Font        = New-Object System.Drawing.Font("Segoe UI", 10)
+$txtDevice.Text        = $env:COMPUTERNAME
+$txtDevice.BackColor   = [System.Drawing.Color]::White
+$txtDevice.BorderStyle = "FixedSingle"
+$form.Controls.Add($txtDevice)
 
-$labelDevice           = New-Object System.Windows.Forms.Label
-$labelDevice.Text      = "Device: $deviceName"
-$labelDevice.AutoSize  = $true
-$labelDevice.Location  = New-Object System.Drawing.Point(20,20)
-$form.Controls.Add($labelDevice)
+# ── Build Type ───────────────────────────────────────────────
+Add-FieldLabel "Build Type" 192
 
-$labelBuild            = New-Object System.Windows.Forms.Label
-$labelBuild.Text       = "What build type?"
-$labelBuild.AutoSize   = $true
-$labelBuild.Location   = New-Object System.Drawing.Point(20,60)
-$form.Controls.Add($labelBuild)
-
-$comboBuild                = New-Object System.Windows.Forms.ComboBox
-$comboBuild.Location       = New-Object System.Drawing.Point(20,90)
-$comboBuild.Size           = New-Object System.Drawing.Size(280,24)
-$comboBuild.DropDownStyle  = 'DropDownList'
+$comboBuild               = New-Object System.Windows.Forms.ComboBox
+$comboBuild.Location      = New-Object System.Drawing.Point(20, 210)
+$comboBuild.Size          = New-Object System.Drawing.Size(378, 28)
+$comboBuild.Font          = New-Object System.Drawing.Font("Segoe UI", 10)
+$comboBuild.DropDownStyle = "DropDownList"
+$comboBuild.BackColor     = [System.Drawing.Color]::White
 $comboBuild.Items.AddRange(@("Standard", "Care", "Kiosk-Chapel"))
 $form.Controls.Add($comboBuild)
 
-$labelBuilder          = New-Object System.Windows.Forms.Label
-$labelBuilder.Text     = "Who is building?"
-$labelBuilder.AutoSize = $true
-$labelBuilder.Location = New-Object System.Drawing.Point(20,130)
-$form.Controls.Add($labelBuilder)
+# ── Builder ──────────────────────────────────────────────────
+Add-FieldLabel "Builder" 254
 
-$comboBuilder              = New-Object System.Windows.Forms.ComboBox
-$comboBuilder.Location     = New-Object System.Drawing.Point(20,160)
-$comboBuilder.Size         = New-Object System.Drawing.Size(280,24)
-$comboBuilder.DropDownStyle = 'DropDownList'
+$comboBuilder               = New-Object System.Windows.Forms.ComboBox
+$comboBuilder.Location      = New-Object System.Drawing.Point(20, 272)
+$comboBuilder.Size          = New-Object System.Drawing.Size(378, 28)
+$comboBuilder.Font          = New-Object System.Drawing.Font("Segoe UI", 10)
+$comboBuilder.DropDownStyle = "DropDownList"
+$comboBuilder.BackColor     = [System.Drawing.Color]::White
 $comboBuilder.Items.AddRange(@(
     "jon.titchmarsh@stmonicatrust.org.uk",
     "ryan.appleton@stmonicatrust.org.uk",
@@ -146,14 +192,46 @@ $comboBuilder.Items.AddRange(@(
 ))
 $form.Controls.Add($comboBuilder)
 
-$button                = New-Object System.Windows.Forms.Button
-$button.Location       = New-Object System.Drawing.Point(20,210)
-$button.Size           = New-Object System.Drawing.Size(280,30)
-$button.Text           = "Start"
-$button.DialogResult   = [System.Windows.Forms.DialogResult]::OK
-$form.Controls.Add($button)
-$form.AcceptButton     = $button
+# ── Start Build button ───────────────────────────────────────
+$btnStart              = New-Object System.Windows.Forms.Button
+$btnStart.Location     = New-Object System.Drawing.Point(20, 326)
+$btnStart.Size         = New-Object System.Drawing.Size(378, 44)
+$btnStart.Text         = "START BUILD"
+$btnStart.Font         = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+$btnStart.BackColor    = [System.Drawing.Color]::FromArgb(22, 163, 74)
+$btnStart.ForeColor    = [System.Drawing.Color]::White
+$btnStart.FlatStyle    = "Flat"
+$btnStart.FlatAppearance.BorderSize = 0
+$btnStart.DialogResult = [System.Windows.Forms.DialogResult]::OK
+$form.Controls.Add($btnStart)
+$form.AcceptButton     = $btnStart
 
+# ── Validation on button click ───────────────────────────────
+$btnStart.Add_Click({
+    if ([string]::IsNullOrWhiteSpace($txtDevice.Text)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter a device name.",
+            "Required", "OK", "Warning")
+        $form.DialogResult = [System.Windows.Forms.DialogResult]::None
+        return
+    }
+    if (-not $comboBuild.SelectedItem) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please select a build type.",
+            "Required", "OK", "Warning")
+        $form.DialogResult = [System.Windows.Forms.DialogResult]::None
+        return
+    }
+    if (-not $comboBuilder.SelectedItem) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please select a builder.",
+            "Required", "OK", "Warning")
+        $form.DialogResult = [System.Windows.Forms.DialogResult]::None
+        return
+    }
+})
+
+# ── Show form ────────────────────────────────────────────────
 $result = $form.ShowDialog()
 
 if ($result -ne [System.Windows.Forms.DialogResult]::OK) {
@@ -161,18 +239,9 @@ if ($result -ne [System.Windows.Forms.DialogResult]::OK) {
     exit
 }
 
-$buildType = $comboBuild.SelectedItem
-$builder   = $comboBuilder.SelectedItem
-
-if (-not $buildType -or -not $builder) {
-    [System.Windows.Forms.MessageBox]::Show(
-        "Please select both a build type and a builder.",
-        "Selection Required",
-        [System.Windows.Forms.MessageBoxButtons]::OK,
-        [System.Windows.Forms.MessageBoxIcon]::Warning
-    )
-    exit
-}
+$deviceName = $txtDevice.Text.Trim()
+$buildType  = $comboBuild.SelectedItem
+$builder    = $comboBuilder.SelectedItem
 
 Write-Host "Device    : $deviceName" -ForegroundColor Green
 Write-Host "Build Type: $buildType"  -ForegroundColor Green
@@ -180,8 +249,7 @@ Write-Host "Builder   : $builder"    -ForegroundColor Green
 
 #=======================================================================
 #   [OS] Send OSDStarted Event
-#   Fires as soon as helpdesk has confirmed device name, build type
-#   and builder — before imaging begins
+#   Fires as soon as helpdesk confirms device name, build type, builder
 #=======================================================================
 
 Send-BuildEvent -Stage "OSDStarted" -Extra @{
@@ -202,13 +270,13 @@ if ((Get-MyComputerModel) -match 'Virtual') {
 #================================================
 
 $Params = @{
-    OSVersion = "Windows 11"
-    OSBuild   = "24H2"
-    OSEdition = "Pro"
+    OSVersion  = "Windows 11"
+    OSBuild    = "24H2"
+    OSEdition  = "Pro"
     OSLanguage = "en-gb"
-    OSLicense = "Volume"
-    ZTI       = $true
-    Firmware  = $false
+    OSLicense  = "Volume"
+    ZTI        = $true
+    Firmware   = $false
 }
 
 Write-Host -ForegroundColor Green "Starting OSDCloud (OSVersion=$($Params.OSVersion), Build=$($Params.OSBuild))"
@@ -216,8 +284,7 @@ Start-OSDCloud @Params
 
 #=======================================================================
 #   [OS] Send OSDComplete Event
-#   Fires immediately after Start-OSDCloud returns — imaging is done,
-#   SetupComplete scripts will run on next boot
+#   Fires immediately after Start-OSDCloud returns — imaging done
 #=======================================================================
 
 Send-BuildEvent -Stage "OSDComplete"
@@ -259,14 +326,14 @@ Write-Host "All files copied."
 
 #================================================
 #   [PostOS] Write Build Info Files
-#   These are read by SetupComplete.ps1 on first boot
+#   Read by SetupComplete.ps1 on first boot
 #================================================
 
 Set-Content -Path "C:\OSDCloud\DeviceName.txt" -Value $deviceName -Force
 Set-Content -Path "C:\OSDCloud\BuildType.txt"  -Value $buildType  -Force
 Set-Content -Path "C:\OSDCloud\Builder.txt"    -Value $builder    -Force
 
-Write-Host -ForegroundColor Green "Writing Device Name to C:\OSDCloud\DeviceName.txt"
+Write-Host -ForegroundColor Green "Writing build info files to C:\OSDCloud\"
 
 #================================================
 #   [PostOS] Secrets
@@ -300,7 +367,7 @@ Write-Host -ForegroundColor Green "Create C:\Windows\Setup\Scripts\SetupComplete
 $SetupCompleteCMD = @'
 powershell.exe -Command Set-ExecutionPolicy RemoteSigned -Force
 powershell.exe -Command "& {IEX (IRM https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/CompanyPortal.ps1)}"
-powershell.exe -Command "& {IEX (IRM https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Standard.ps1)}"
+powershell.exe -Command "& {IEX (IRM https://raw.githubusercontent.com/talbs101/intune/refs/heads/main/CurrentBuild/Standard-v2.ps1)}"
 '@
 
 if (!(Test-Path "C:\Windows\Setup\Scripts")) {
