@@ -79,7 +79,9 @@ $buildType  = $null
 $builder    = $null
 
 #================================================
-#   [PreOS] Build Selector Form — single screen
+#   [PreOS] Build Selector Form
+#   No nested function definitions or Add_Click scriptblocks
+#   — IEX/Invoke-WebPSScript compatible
 #================================================
 
 $form                  = New-Object System.Windows.Forms.Form
@@ -115,7 +117,7 @@ $subLabel.AutoSize     = $true
 $subLabel.Location     = New-Object System.Drawing.Point(20, 34)
 $header.Controls.Add($subLabel)
 
-# ── Serial number display (read only, for verification) ─────
+# ── Serial number display ────────────────────────────────────
 $serialPanel             = New-Object System.Windows.Forms.Panel
 $serialPanel.Size        = New-Object System.Drawing.Size(378, 36)
 $serialPanel.Location    = New-Object System.Drawing.Point(20, 76)
@@ -139,20 +141,16 @@ $serialValue.AutoSize  = $true
 $serialValue.Location  = New-Object System.Drawing.Point(10, 18)
 $serialPanel.Controls.Add($serialValue)
 
-# ── Helper to add a field label ─────────────────────────────
-function Add-FieldLabel($text, $y) {
-    $lbl           = New-Object System.Windows.Forms.Label
-    $lbl.Text      = $text
-    $lbl.Font      = New-Object System.Drawing.Font("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
-    $lbl.ForeColor = [System.Drawing.Color]::FromArgb(55, 65, 81)
-    $lbl.AutoSize  = $true
-    $lbl.Location  = New-Object System.Drawing.Point(20, $y)
-    $form.Controls.Add($lbl)
-}
+# ── Device Name label ────────────────────────────────────────
+$lblDevice           = New-Object System.Windows.Forms.Label
+$lblDevice.Text      = "Device Name"
+$lblDevice.Font      = New-Object System.Drawing.Font("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
+$lblDevice.ForeColor = [System.Drawing.Color]::FromArgb(55, 65, 81)
+$lblDevice.AutoSize  = $true
+$lblDevice.Location  = New-Object System.Drawing.Point(20, 130)
+$form.Controls.Add($lblDevice)
 
-# ── Device Name ──────────────────────────────────────────────
-Add-FieldLabel "Device Name" 130
-
+# ── Device Name input ────────────────────────────────────────
 $txtDevice             = New-Object System.Windows.Forms.TextBox
 $txtDevice.Location    = New-Object System.Drawing.Point(20, 148)
 $txtDevice.Size        = New-Object System.Drawing.Size(378, 28)
@@ -162,9 +160,16 @@ $txtDevice.BackColor   = [System.Drawing.Color]::White
 $txtDevice.BorderStyle = "FixedSingle"
 $form.Controls.Add($txtDevice)
 
-# ── Build Type ───────────────────────────────────────────────
-Add-FieldLabel "Build Type" 192
+# ── Build Type label ─────────────────────────────────────────
+$lblBuild            = New-Object System.Windows.Forms.Label
+$lblBuild.Text       = "Build Type"
+$lblBuild.Font       = New-Object System.Drawing.Font("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
+$lblBuild.ForeColor  = [System.Drawing.Color]::FromArgb(55, 65, 81)
+$lblBuild.AutoSize   = $true
+$lblBuild.Location   = New-Object System.Drawing.Point(20, 192)
+$form.Controls.Add($lblBuild)
 
+# ── Build Type dropdown ──────────────────────────────────────
 $comboBuild               = New-Object System.Windows.Forms.ComboBox
 $comboBuild.Location      = New-Object System.Drawing.Point(20, 210)
 $comboBuild.Size          = New-Object System.Drawing.Size(378, 28)
@@ -174,9 +179,16 @@ $comboBuild.BackColor     = [System.Drawing.Color]::White
 $comboBuild.Items.AddRange(@("Standard", "Care", "Kiosk-Chapel"))
 $form.Controls.Add($comboBuild)
 
-# ── Builder ──────────────────────────────────────────────────
-Add-FieldLabel "Builder" 254
+# ── Builder label ────────────────────────────────────────────
+$lblBuilder           = New-Object System.Windows.Forms.Label
+$lblBuilder.Text      = "Builder"
+$lblBuilder.Font      = New-Object System.Drawing.Font("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
+$lblBuilder.ForeColor = [System.Drawing.Color]::FromArgb(55, 65, 81)
+$lblBuilder.AutoSize  = $true
+$lblBuilder.Location  = New-Object System.Drawing.Point(20, 254)
+$form.Controls.Add($lblBuilder)
 
+# ── Builder dropdown ─────────────────────────────────────────
 $comboBuilder               = New-Object System.Windows.Forms.ComboBox
 $comboBuilder.Location      = New-Object System.Drawing.Point(20, 272)
 $comboBuilder.Size          = New-Object System.Drawing.Size(378, 28)
@@ -193,43 +205,18 @@ $comboBuilder.Items.AddRange(@(
 $form.Controls.Add($comboBuilder)
 
 # ── Start Build button ───────────────────────────────────────
-$btnStart              = New-Object System.Windows.Forms.Button
-$btnStart.Location     = New-Object System.Drawing.Point(20, 326)
-$btnStart.Size         = New-Object System.Drawing.Size(378, 44)
-$btnStart.Text         = "START BUILD"
-$btnStart.Font         = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
-$btnStart.BackColor    = [System.Drawing.Color]::FromArgb(22, 163, 74)
-$btnStart.ForeColor    = [System.Drawing.Color]::White
-$btnStart.FlatStyle    = "Flat"
+$btnStart                           = New-Object System.Windows.Forms.Button
+$btnStart.Location                  = New-Object System.Drawing.Point(20, 326)
+$btnStart.Size                      = New-Object System.Drawing.Size(378, 44)
+$btnStart.Text                      = "START BUILD"
+$btnStart.Font                      = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+$btnStart.BackColor                 = [System.Drawing.Color]::FromArgb(22, 163, 74)
+$btnStart.ForeColor                 = [System.Drawing.Color]::White
+$btnStart.FlatStyle                 = "Flat"
 $btnStart.FlatAppearance.BorderSize = 0
-$btnStart.DialogResult = [System.Windows.Forms.DialogResult]::OK
+$btnStart.DialogResult              = [System.Windows.Forms.DialogResult]::OK
 $form.Controls.Add($btnStart)
-$form.AcceptButton     = $btnStart
-
-# ── Validation on button click ───────────────────────────────
-$btnStart.Add_Click({
-    if ([string]::IsNullOrWhiteSpace($txtDevice.Text)) {
-        [System.Windows.Forms.MessageBox]::Show(
-            "Please enter a device name.",
-            "Required", "OK", "Warning")
-        $form.DialogResult = [System.Windows.Forms.DialogResult]::None
-        return
-    }
-    if (-not $comboBuild.SelectedItem) {
-        [System.Windows.Forms.MessageBox]::Show(
-            "Please select a build type.",
-            "Required", "OK", "Warning")
-        $form.DialogResult = [System.Windows.Forms.DialogResult]::None
-        return
-    }
-    if (-not $comboBuilder.SelectedItem) {
-        [System.Windows.Forms.MessageBox]::Show(
-            "Please select a builder.",
-            "Required", "OK", "Warning")
-        $form.DialogResult = [System.Windows.Forms.DialogResult]::None
-        return
-    }
-})
+$form.AcceptButton                  = $btnStart
 
 # ── Show form ────────────────────────────────────────────────
 $result = $form.ShowDialog()
@@ -239,9 +226,32 @@ if ($result -ne [System.Windows.Forms.DialogResult]::OK) {
     exit
 }
 
+# ── Read values ──────────────────────────────────────────────
 $deviceName = $txtDevice.Text.Trim()
 $buildType  = $comboBuild.SelectedItem
 $builder    = $comboBuilder.SelectedItem
+
+# ── Validate after form closes ───────────────────────────────
+if ([string]::IsNullOrWhiteSpace($deviceName)) {
+    [System.Windows.Forms.MessageBox]::Show(
+        "Please enter a device name.",
+        "Required", "OK", "Warning")
+    exit
+}
+
+if (-not $buildType) {
+    [System.Windows.Forms.MessageBox]::Show(
+        "Please select a build type.",
+        "Required", "OK", "Warning")
+    exit
+}
+
+if (-not $builder) {
+    [System.Windows.Forms.MessageBox]::Show(
+        "Please select a builder.",
+        "Required", "OK", "Warning")
+    exit
+}
 
 Write-Host "Device    : $deviceName" -ForegroundColor Green
 Write-Host "Build Type: $buildType"  -ForegroundColor Green
@@ -249,7 +259,6 @@ Write-Host "Builder   : $builder"    -ForegroundColor Green
 
 #=======================================================================
 #   [OS] Send OSDStarted Event
-#   Fires as soon as helpdesk confirms device name, build type, builder
 #=======================================================================
 
 Send-BuildEvent -Stage "OSDStarted" -Extra @{
@@ -284,7 +293,6 @@ Start-OSDCloud @Params
 
 #=======================================================================
 #   [OS] Send OSDComplete Event
-#   Fires immediately after Start-OSDCloud returns — imaging done
 #=======================================================================
 
 Send-BuildEvent -Stage "OSDComplete"
@@ -318,7 +326,7 @@ foreach ($rel in $filesToCopy) {
     $dest    = Join-Path $destinationRoot $rel
     $destDir = Split-Path $dest -Parent
     if (-not (Test-Path $destDir)) { New-Item -Path $destDir -ItemType Directory -Force | Out-Null }
-    Write-Host "Copying `"$src`" → `"$dest`""
+    Write-Host "Copying $src to $dest"
     Copy-Item -Path $src -Destination $dest -Force
 }
 
@@ -326,7 +334,6 @@ Write-Host "All files copied."
 
 #================================================
 #   [PostOS] Write Build Info Files
-#   Read by SetupComplete.ps1 on first boot
 #================================================
 
 Set-Content -Path "C:\OSDCloud\DeviceName.txt" -Value $deviceName -Force
