@@ -226,25 +226,23 @@ try {
 #   [OS] Install CrowdStrike
 #=======================================================================
 
-Write-Host -ForegroundColor Green "Installing Crowdstrike Sensor from Azure"
+Write-Host -ForegroundColor Green "Installing CrowdStrike Sensor from Azure"
 
-# Variables
-$blobUrl = $CrowdstrikeUrl
-$localPath = "C:\Temp\FalconSensor_Windows.exe"
+try {
+    $localPath = "C:\Temp\FalconSensor_Windows.exe"
+    if (-not (Test-Path "C:\Temp")) { New-Item -Path "C:\Temp" -ItemType Directory }
 
-# Create download directory if it doesn't exist
-if (-not (Test-Path "C:\Temp")) {
-    New-Item -Path "C:\Temp" -ItemType Directory
+    Invoke-WebRequest -Uri $CrowdStrikeUrl -OutFile $localPath
+    Start-Process -FilePath $localPath `
+        -ArgumentList "/install /quiet /norestart /CID=$CrowdStrikeSecret" `
+        -Wait -NoNewWindow
+
+    Send-BuildEvent -Stage "CrowdstrikeInstalled"
+
+} catch {
+    Send-BuildEvent -Stage "CrowdstrikeInstalled" -Status "failed" -ErrorMsg $_.Exception.Message
+    Write-Warning "CrowdStrike install failed: $_"
 }
-
-# Download setup.exe from Azure Blob
-Invoke-WebRequest -Uri $blobUrl -OutFile $localPath
-
-
-# Run the installer
-Start-Process -FilePath $localPath -ArgumentList "/install /quiet /norestart /CID=$CrowdStrikeSecret" -Wait -NoNewWindow
-
-Send-BuildEvent -Stage "CrowdstrikeInstalled"
 
 
 #=======================================================================
