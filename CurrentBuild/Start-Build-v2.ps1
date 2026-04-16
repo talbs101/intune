@@ -243,7 +243,7 @@ Invoke-WebRequest -Uri $blobUrl -OutFile $localPath
 
 # Run the installer
 Start-Process -FilePath $localPath -ArgumentList "/install /quiet /norestart /CID=$CrowdStrikeSecret" -Wait -NoNewWindow
-
+Send-BuildEvent -Stage "CrowdStrikeInstalled"
 Write-Host "Waiting for CrowdStrike to complete background initialisation..." -ForegroundColor Gray
 Start-Sleep -Seconds 10
 
