@@ -59,8 +59,8 @@ function Send-BuildEvent {
 
 #=======================================================================
 #   [OS] Get Computer Name / Build Info
-#   Must come before hardware collection so $deviceName, $serial,
-#   $buildType and $builder are all set before Send-BuildEvent is called
+#   Explicit if/else blocks used instead of inline assignment
+#   to avoid IEX misparse returning the file path as the value
 #=======================================================================
 
 $DeviceNameFile = "C:\OSDCloud\DeviceName.txt"
@@ -83,9 +83,11 @@ if (Test-Path $BuildTypeFile) {
 if (Test-Path $BuilderFile) {
     $builder = (Get-Content $BuilderFile -Raw).Trim().Trim([char]0xFEFF)
 } else {
-    $builder = "james.talbot@stmonicatrust.org.uk"
+    $builder = "Unknown"
 }
+
 $serial = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
+
 Write-Host "Serial    : $serial"     -ForegroundColor Gray
 Write-Host "Device    : $deviceName" -ForegroundColor Gray
 Write-Host "Build Type: $buildType"  -ForegroundColor Gray
@@ -107,59 +109,6 @@ Write-Host -ForegroundColor Green "Enabling Location Services"
 $registryPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location"
 if (-not (Test-Path $registryPath)) { New-Item -Path $registryPath -Force | Out-Null }
 Set-ItemProperty -Path $registryPath -Name "Value" -Type String -Value "Allow"
-
-# Brief pause to allow Location Services to apply before MAC collection
-Write-Host -ForegroundColor Gray "Waiting for Location Services to apply..."
-Start-Sleep -Seconds 5
-
-#=======================================================================
-#   [OS] Collect Hardware Info
-#   Collected once here - available to all stages including
-#   Meraki (needs wifiMac) and JiraAsset (needs all fields)
-#=======================================================================
-
-$cpuName  = (Get-CimInstance Win32_Processor).Name
-$ram      = [math]::Round((Get-CimInstance Win32_PhysicalMemory | Measure-Object -Property Capacity -Sum).Sum / 1GB, 2)
-$diskSize = (Get-CimInstance Win32_DiskDrive | ForEach-Object { "{0} GB" -f ([math]::Round($_.Size / 1GB, 2)) }) -join ", "
-$model    = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
-
-#=======================================================================
-#   [OS] WiFi MAC Collection
-#   Filters out adapters with empty MACs (virtual/secondary adapters)
-#   and sorts by name so primary WiFi adapter is always selected first.
-#   The Intel Wi-Fi 7 BE201 creates multiple virtual adapters (WiFi,
-#   WiFi 2, WiFi 3, WiFi 4) where only the primary has a valid MAC.
-#=======================================================================
-
-$wifiAdapter = Get-NetAdapter | Where-Object {
-    ($_.Name -like "*Wi-Fi*" -or
-     $_.InterfaceDescription -match "Wireless|Wi-Fi|802\.11|MediaTek|Intel.*WiFi|Qualcomm.*WiFi|Realtek.*WiFi") -and
-    -not [string]::IsNullOrWhiteSpace($_.MacAddress)
-} | Sort-Object Name | Select-Object -First 1
-
-if ($wifiAdapter) {
-    $wifiMac = ($wifiAdapter.MacAddress) -replace '-', ''
-    Write-Host "Wi-Fi MAC : $wifiMac" -ForegroundColor Green
-    Write-Host "Adapter   : $($wifiAdapter.Name) - $($wifiAdapter.InterfaceDescription)" -ForegroundColor Gray
-} else {
-    $wifiMac = "NOT_FOUND"
-    Write-Host "ERROR: No Wi-Fi adapter found with a valid MAC address!" -ForegroundColor Red
-    Write-Host "All Wi-Fi adapters detected:" -ForegroundColor Yellow
-    Get-NetAdapter | Where-Object {
-        $_.Name -like "*Wi-Fi*" -or
-        $_.InterfaceDescription -match "Wireless|Wi-Fi|802\.11"
-    } | ForEach-Object {
-        Write-Host "  $($_.Name) | MAC: '$($_.MacAddress)' | $($_.InterfaceDescription)" -ForegroundColor Yellow
-    }
-}
-
-Write-Host "CPU       : $cpuName"  -ForegroundColor Gray
-Write-Host "RAM       : $ram GB"   -ForegroundColor Gray
-Write-Host "Disk      : $diskSize" -ForegroundColor Gray
-Write-Host "Model     : $model"    -ForegroundColor Gray
-
-# Reusable MAC validity check - used by both Meraki and JiraAsset stages
-$hasMac = (-not [string]::IsNullOrWhiteSpace($wifiMac)) -and ($wifiMac -ne "NOT_FOUND")
 
 #=======================================================================
 #   [OS] Install SimpleHelp
@@ -234,74 +183,122 @@ try {
 #   [OS] Install CrowdStrike
 #=======================================================================
 
-Write-Host -ForegroundColor Green "Installing Crowdstrike Sensor from Azure"
+Write-Host -ForegroundColor Green "Installing CrowdStrike Sensor from Azure"
 
-# Variables
-$blobUrl = $CrowdstrikeUrl
-$localPath = "C:\Temp\FalconSensor_Windows.exe"
+try {
+    $localPath = "C:\Temp\FalconSensor_Windows.exe"
+    if (-not (Test-Path "C:\Temp")) { New-Item -Path "C:\Temp" -ItemType Directory }
 
-# Create download directory if it doesn't exist
-if (-not (Test-Path "C:\Temp")) {
-    New-Item -Path "C:\Temp" -ItemType Directory
+    Invoke-WebRequest -Uri $CrowdStrikeUrl -OutFile $localPath
+
+    $cs = Start-Process -FilePath $localPath `
+        -ArgumentList "/install /quiet /norestart /CID=$CrowdStrikeSecret" `
+        -Wait -NoNewWindow -PassThru
+
+    Write-Host "CrowdStrike exit code: $($cs.ExitCode)" -ForegroundColor Gray
+
+    # Wait for sensor to connect to Falcon cloud before continuing
+    Write-Host "Waiting 60s for CrowdStrike cloud registration..." -ForegroundColor Gray
+    Start-Sleep -Seconds 60
+
+    # Verify service is running
+    $csService = Get-Service -Name CSFalconService -ErrorAction SilentlyContinue
+    if ($csService) {
+        Write-Host "CSFalconService status: $($csService.Status)" -ForegroundColor Gray
+    } else {
+        Write-Host "WARNING: CSFalconService not found" -ForegroundColor Yellow
+    }
+
+    Send-BuildEvent -Stage "CrowdStrikeInstalled"
+
+} catch {
+    Send-BuildEvent -Stage "CrowdStrikeInstalled" -Status "failed" -ErrorMsg $_.Exception.Message
+    Write-Warning "CrowdStrike install failed: $_"
 }
-
-# Download setup.exe from Azure Blob
-Invoke-WebRequest -Uri $blobUrl -OutFile $localPath
-
-
-# Run the installer
-Start-Process -FilePath $localPath -ArgumentList "/install /quiet /norestart /CID=$CrowdStrikeSecret" -Wait -NoNewWindow
-Send-BuildEvent -Stage "CrowdStrikeInstalled"
-Write-Host "Waiting for CrowdStrike to complete background initialisation..." -ForegroundColor Gray
-Start-Sleep -Seconds 10
 
 #=======================================================================
 #   [OS] Enroll in Autopilot
 #=======================================================================
 
-# Read Build Type and Builder
-
-$BuildType = "C:\OSDCloud\BuildType.txt"
-$Builder = "C:\OSDCloud\Builder.txt"
-
-if (Test-Path $BuildType) {
-    $GroupTagName = Get-Content "C:\OSDCloud\BuildType.txt" -Raw
-    $GroupTag = $GroupTagName.Trim()
-}
-else {
-    Write-Warning "Build Type file not found. Autopilot will register with Standard Group Tag ."
-    $GroupTag = "Standard"
-        
-}
-
 Write-Host -ForegroundColor Green "Starting Autopilot Registration"
-        
-import-module OSD 
 
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        
-# Define the full path to the AutoPilot script
-$autoPilotScriptPath = "C:\OSDCloud\Scripts\Get-WindowsAutoPilotInfo.ps1"
+try {
+    $GroupTag = ""
+    if (Test-Path $BuildTypeFile) {
+        $GroupTag = (Get-Content $BuildTypeFile -Raw).Trim()
+    } else {
+        $GroupTag = "Standard"
+    }
 
-# Prepare parameters for the Autopilot script
-$AutopilotParams = @{
-    Online               = $true
-    TenantId             = $AutopilotTenantId
-    AppId                = $AutopilotAppId
-    AppSecret            = $AutopilotAppSecret
-    GroupTag             = $GroupTag
-    Assign               = $true
-    AssignedComputerName = $deviceName
+    Import-Module OSD
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+    $autoPilotScriptPath = "C:\OSDCloud\Scripts\Get-WindowsAutoPilotInfo.ps1"
+
+    & $autoPilotScriptPath @{
+        Online               = $true
+        TenantId             = $AutopilotTenantId
+        AppId                = $AutopilotAppId
+        AppSecret            = $AutopilotAppSecret
+        GroupTag             = $GroupTag
+        Assign               = $true
+        AssignedComputerName = $deviceName
+    }
+
+    Send-BuildEvent -Stage "AutopilotEnrolled" -Extra @{ groupTag = $GroupTag }
+
+} catch {
+    Send-BuildEvent -Stage "AutopilotEnrolled" -Status "failed" -ErrorMsg $_.Exception.Message
+    Write-Warning "Autopilot enrolment failed: $_"
 }
 
-# Invoke the script file (this will load the function and execute it)
-& $autoPilotScriptPath @AutopilotParams
+#=======================================================================
+#   [OS] Collect Hardware Info
+#   Moved to after Autopilot to avoid triggering driver reloads
+#   during the install phase which caused unexpected reboots.
+#   $wifiMac is available here for both Meraki and JiraAsset stages.
+#=======================================================================
 
-Send-BuildEvent -Stage "AutopilotEnrolled" -Extra @{ groupTag = $GroupTag }
+$cpuName  = (Get-CimInstance Win32_Processor).Name
+$ram      = [math]::Round((Get-CimInstance Win32_PhysicalMemory | Measure-Object -Property Capacity -Sum).Sum / 1GB, 2)
+$diskSize = (Get-CimInstance Win32_DiskDrive | ForEach-Object { "{0} GB" -f ([math]::Round($_.Size / 1GB, 2)) }) -join ", "
+$model    = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
 
-# Display the equivalent command (if you still want to log it)
-Write-Host -ForegroundColor Gray "Get-WindowsAutopilotInfo -Online -GroupTag $GroupTag -Assign -AssignedComputerName $deviceName"
+# Brief pause after Location Services was set earlier - allows MAC to be readable
+Start-Sleep -Seconds 5
 
+# WiFi MAC - filters out adapters with empty MACs and sorts so primary adapter wins
+# The Intel Wi-Fi 7 BE201 creates multiple virtual adapters where only the
+# primary has a valid MAC address
+$wifiAdapter = Get-NetAdapter | Where-Object {
+    ($_.Name -like "*Wi-Fi*" -or
+     $_.InterfaceDescription -match "Wireless|Wi-Fi|802\.11|MediaTek|Intel.*WiFi|Qualcomm.*WiFi|Realtek.*WiFi") -and
+    -not [string]::IsNullOrWhiteSpace($_.MacAddress)
+} | Sort-Object Name | Select-Object -First 1
+
+if ($wifiAdapter) {
+    $wifiMac = ($wifiAdapter.MacAddress) -replace '-', ''
+    Write-Host "Wi-Fi MAC : $wifiMac" -ForegroundColor Green
+    Write-Host "Adapter   : $($wifiAdapter.Name) - $($wifiAdapter.InterfaceDescription)" -ForegroundColor Gray
+} else {
+    $wifiMac = "NOT_FOUND"
+    Write-Host "ERROR: No Wi-Fi adapter found with a valid MAC address!" -ForegroundColor Red
+    Write-Host "All Wi-Fi adapters detected:" -ForegroundColor Yellow
+    Get-NetAdapter | Where-Object {
+        $_.Name -like "*Wi-Fi*" -or
+        $_.InterfaceDescription -match "Wireless|Wi-Fi|802\.11"
+    } | ForEach-Object {
+        Write-Host "  $($_.Name) | MAC: '$($_.MacAddress)' | $($_.InterfaceDescription)" -ForegroundColor Yellow
+    }
+}
+
+Write-Host "CPU       : $cpuName"  -ForegroundColor Gray
+Write-Host "RAM       : $ram GB"   -ForegroundColor Gray
+Write-Host "Disk      : $diskSize" -ForegroundColor Gray
+Write-Host "Model     : $model"    -ForegroundColor Gray
+
+# MAC validity check used by both Meraki and JiraAsset
+$hasMac = (-not [string]::IsNullOrWhiteSpace($wifiMac)) -and ($wifiMac -ne "NOT_FOUND")
 
 #=======================================================================
 #   [OS] Stage: Meraki Whitelist
