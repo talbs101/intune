@@ -245,7 +245,7 @@ try {
 }
 
 Write-Host "Waiting for CrowdStrike to complete background initialisation..." -ForegroundColor Gray
-Start-Sleep -Seconds 30
+Start-Sleep -Seconds 10
 
 #=======================================================================
 #   [OS] Enroll in Autopilot
