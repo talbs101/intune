@@ -244,6 +244,8 @@ try {
     Write-Warning "CrowdStrike install failed: $_"
 }
 
+Write-Host "Waiting for CrowdStrike to complete background initialisation..." -ForegroundColor Gray
+Start-Sleep -Seconds 30
 
 #=======================================================================
 #   [OS] Enroll in Autopilot
