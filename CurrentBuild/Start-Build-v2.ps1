@@ -74,9 +74,17 @@ if (Test-Path $DeviceNameFile) {
     $deviceName = $env:COMPUTERNAME
 }
 
-$buildType = if (Test-Path $BuildTypeFile) { (Get-Content $BuildTypeFile -Raw).Trim().Trim([char]0xFEFF) } else { "Standard" }
-$builder   = if (Test-Path $BuilderFile)   { (Get-Content $BuilderFile   -Raw).Trim().Trim([char]0xFEFF) } else { "Unknown" }
+if (Test-Path $BuildTypeFile) {
+    $buildType = (Get-Content $BuildTypeFile -Raw).Trim().Trim([char]0xFEFF)
+} else {
+    $buildType = "Standard"
+}
 
+if (Test-Path $BuilderFile) {
+    $builder = (Get-Content $BuilderFile -Raw).Trim().Trim([char]0xFEFF)
+} else {
+    $builder = "james.talbot@stmonicatrust.org.uk"
+}
 $serial = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
 Write-Host "Serial    : $serial"     -ForegroundColor Gray
 Write-Host "Device    : $deviceName" -ForegroundColor Gray
