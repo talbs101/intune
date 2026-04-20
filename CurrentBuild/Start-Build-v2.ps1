@@ -93,7 +93,7 @@ function Send-LogEvent {
 
 #=======================================================================
 #   [OS] Get Computer Name / Build Info
-#   Explicit if/else blocks to avoid IEX misparse
+#   Explicit if/else blocks to avoid IEX misparse returning file path
 #=======================================================================
 
 $DeviceNameFile = "C:\OSDCloud\DeviceName.txt"
@@ -141,26 +141,6 @@ Write-Host -ForegroundColor Green "Enabling Location Services"
 $registryPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location"
 if (-not (Test-Path $registryPath)) { New-Item -Path $registryPath -Force | Out-Null }
 Set-ItemProperty -Path $registryPath -Name "Value" -Type String -Value "Allow"
-
-#=======================================================================
-#   [OS] Ensure WinRM is running
-#   Required for CimSession used by Get-WindowsAutoPilotInfo.ps1
-#=======================================================================
-
-Write-Host -ForegroundColor Gray "Starting WinRM service..."
-Start-Service WinRM -ErrorAction SilentlyContinue
-Set-Service   WinRM -StartupType Automatic -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 5
-
-$winrm = Get-Service WinRM -ErrorAction SilentlyContinue
-if ($winrm -and $winrm.Status -eq 'Running') {
-    Write-Host "WinRM running." -ForegroundColor Gray
-} else {
-    Write-Host "WARNING: WinRM may not be running - Autopilot could fail" -ForegroundColor Yellow
-    Send-LogEvent -Level "WARNING" -Section "WinRM" `
-        -Message "WinRM service not confirmed running before Autopilot" `
-        -Detail "Service status: $($winrm.Status)"
-}
 
 #=======================================================================
 #   [OS] Install SimpleHelp
@@ -239,14 +219,12 @@ try {
 
 #=======================================================================
 #   [OS] Install CrowdStrike
-#   Exit code 87 = ERROR_INVALID_PARAMETER - usually means the CID
-#   argument format is wrong or $CrowdStrikeSecret is empty.
-#   Exit code 106 = reboot required but install succeeded.
+#   Exit code 87 = ERROR_INVALID_PARAMETER
+#   Exit code 106 = reboot required but install succeeded
 #=======================================================================
 
 Write-Host -ForegroundColor Green "Installing CrowdStrike Sensor from Azure"
 
-# Verify CID is populated before attempting install
 Write-Host "CID length: $($CrowdStrikeSecret.Length) chars" -ForegroundColor Gray
 
 if ([string]::IsNullOrWhiteSpace($CrowdStrikeSecret)) {
@@ -270,7 +248,6 @@ if ([string]::IsNullOrWhiteSpace($CrowdStrikeSecret)) {
         Write-Host "CrowdStrike exit code: $($cs.ExitCode)" -ForegroundColor Gray
 
         if ($cs.ExitCode -eq 87) {
-            # Exit code 87 usually means CID format issue - try without the slash prefix
             Write-Host "Exit 87 - retrying with alternate argument format..." -ForegroundColor Yellow
             $cs2 = Start-Process -FilePath $localPath `
                 -ArgumentList "/install /quiet /norestart /CID=$CrowdStrikeSecret" `
@@ -286,11 +263,9 @@ if ([string]::IsNullOrWhiteSpace($CrowdStrikeSecret)) {
                 -Detail "Exit code: $finalCode - CID length was $($CrowdStrikeSecret.Length)"
         }
 
-        # Wait for sensor to connect to Falcon cloud
         Write-Host "Waiting 60s for CrowdStrike cloud registration..." -ForegroundColor Gray
         Start-Sleep -Seconds 60
 
-        # Verify service is running
         $csService = Get-Service -Name CSFalconService -ErrorAction SilentlyContinue
         if ($csService) {
             Write-Host "CSFalconService status: $($csService.Status)" -ForegroundColor Gray
@@ -302,7 +277,7 @@ if ([string]::IsNullOrWhiteSpace($CrowdStrikeSecret)) {
         } else {
             Send-LogEvent -Level "WARNING" -Section "CrowdStrikeInstalled" `
                 -Message "CSFalconService not found after install" `
-                -Detail "Exit code was: $finalCode - Service may not have registered"
+                -Detail "Exit code was: $finalCode"
             Write-Host "WARNING: CSFalconService not found" -ForegroundColor Yellow
         }
 
@@ -319,8 +294,11 @@ if ([string]::IsNullOrWhiteSpace($CrowdStrikeSecret)) {
 
 #=======================================================================
 #   [OS] Enroll in Autopilot
-#   ComputerName = current machine name for CimSession (local WMI)
-#   AssignedComputerName = $deviceName from DeviceName.txt (desired name)
+#   ComputerName parameter intentionally omitted - passing it causes
+#   Get-WindowsAutoPilotInfo.ps1 to create a remote CimSession which
+#   fails on non-domain machines due to WinRM authentication.
+#   Without ComputerName the script queries WMI locally, bypassing WinRM.
+#   AssignedComputerName uses $deviceName from DeviceName.txt
 #=======================================================================
 
 Write-Host -ForegroundColor Green "Starting Autopilot Registration"
@@ -338,16 +316,19 @@ try {
 
     $autoPilotScriptPath = "C:\OSDCloud\Scripts\Get-WindowsAutoPilotInfo.ps1"
 
-    & $autoPilotScriptPath @{
+    $AutopilotParams = @{
         Online               = $true
         TenantId             = $AutopilotTenantId
         AppId                = $AutopilotAppId
         AppSecret            = $AutopilotAppSecret
         GroupTag             = $GroupTag
         Assign               = $true
-        ComputerName         = $env:COMPUTERNAME
         AssignedComputerName = $deviceName
     }
+
+    & $autoPilotScriptPath @AutopilotParams
+
+    Write-Host -ForegroundColor Gray "Get-WindowsAutopilotInfo -Online -GroupTag $GroupTag -Assign -AssignedComputerName $deviceName"
 
     Send-BuildEvent -Stage "AutopilotEnrolled" -Extra @{ groupTag = $GroupTag }
 
