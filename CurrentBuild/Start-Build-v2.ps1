@@ -59,8 +59,6 @@ function Send-BuildEvent {
 
 #=======================================================================
 #   [OS] Send-LogEvent Helper Function
-#   Sends error and warning details to Logic App for central logging.
-#   Routes to BuildLog switch case which writes to BuildLogs table.
 #=======================================================================
 
 function Send-LogEvent {
@@ -95,8 +93,7 @@ function Send-LogEvent {
 
 #=======================================================================
 #   [OS] Get Computer Name / Build Info
-#   Explicit if/else blocks used instead of inline assignment
-#   to avoid IEX misparse returning the file path as the value
+#   Explicit if/else blocks to avoid IEX misparse
 #=======================================================================
 
 $DeviceNameFile = "C:\OSDCloud\DeviceName.txt"
@@ -138,13 +135,32 @@ Manage-bde -off C:
 
 #=======================================================================
 #   [OS] Enable Location Services
-#   Required for Intune to obtain the WiFi MAC address
 #=======================================================================
 
 Write-Host -ForegroundColor Green "Enabling Location Services"
 $registryPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location"
 if (-not (Test-Path $registryPath)) { New-Item -Path $registryPath -Force | Out-Null }
 Set-ItemProperty -Path $registryPath -Name "Value" -Type String -Value "Allow"
+
+#=======================================================================
+#   [OS] Ensure WinRM is running
+#   Required for CimSession used by Get-WindowsAutoPilotInfo.ps1
+#=======================================================================
+
+Write-Host -ForegroundColor Gray "Starting WinRM service..."
+Start-Service WinRM -ErrorAction SilentlyContinue
+Set-Service   WinRM -StartupType Automatic -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 5
+
+$winrm = Get-Service WinRM -ErrorAction SilentlyContinue
+if ($winrm -and $winrm.Status -eq 'Running') {
+    Write-Host "WinRM running." -ForegroundColor Gray
+} else {
+    Write-Host "WARNING: WinRM may not be running - Autopilot could fail" -ForegroundColor Yellow
+    Send-LogEvent -Level "WARNING" -Section "WinRM" `
+        -Message "WinRM service not confirmed running before Autopilot" `
+        -Detail "Service status: $($winrm.Status)"
+}
 
 #=======================================================================
 #   [OS] Install SimpleHelp
@@ -223,61 +239,88 @@ try {
 
 #=======================================================================
 #   [OS] Install CrowdStrike
+#   Exit code 87 = ERROR_INVALID_PARAMETER - usually means the CID
+#   argument format is wrong or $CrowdStrikeSecret is empty.
+#   Exit code 106 = reboot required but install succeeded.
 #=======================================================================
 
 Write-Host -ForegroundColor Green "Installing CrowdStrike Sensor from Azure"
 
-try {
-    $localPath = "C:\Temp\FalconSensor_Windows.exe"
-    if (-not (Test-Path "C:\Temp")) { New-Item -Path "C:\Temp" -ItemType Directory }
+# Verify CID is populated before attempting install
+Write-Host "CID length: $($CrowdStrikeSecret.Length) chars" -ForegroundColor Gray
 
-    Invoke-WebRequest -Uri $CrowdStrikeUrl -OutFile $localPath
-
-    $cs = Start-Process -FilePath $localPath `
-        -ArgumentList "/install /quiet /norestart /CID=$CrowdStrikeSecret" `
-        -Wait -NoNewWindow -PassThru
-
-    Write-Host "CrowdStrike exit code: $($cs.ExitCode)" -ForegroundColor Gray
-
-    # Log non-zero exit codes as warnings even if we continue
-    if ($cs.ExitCode -ne 0 -and $cs.ExitCode -ne 106) {
-        Send-LogEvent -Level "WARNING" -Section "CrowdStrikeInstalled" `
-            -Message "CrowdStrike returned unexpected exit code" `
-            -Detail "Exit code: $($cs.ExitCode)"
-    }
-
-    # Wait for sensor to connect to Falcon cloud
-    Write-Host "Waiting 60s for CrowdStrike cloud registration..." -ForegroundColor Gray
-    Start-Sleep -Seconds 60
-
-    # Verify service is running
-    $csService = Get-Service -Name CSFalconService -ErrorAction SilentlyContinue
-    if ($csService) {
-        Write-Host "CSFalconService status: $($csService.Status)" -ForegroundColor Gray
-        if ($csService.Status -ne "Running") {
-            Send-LogEvent -Level "WARNING" -Section "CrowdStrikeInstalled" `
-                -Message "CSFalconService not in Running state" `
-                -Detail "Service status: $($csService.Status)"
-        }
-    } else {
-        Send-LogEvent -Level "WARNING" -Section "CrowdStrikeInstalled" `
-            -Message "CSFalconService not found after install" `
-            -Detail "Service may not have registered correctly"
-        Write-Host "WARNING: CSFalconService not found" -ForegroundColor Yellow
-    }
-
-    Send-BuildEvent -Stage "CrowdStrikeInstalled"
-
-} catch {
-    $errMsg = $_.Exception.Message
-    Send-BuildEvent -Stage "CrowdStrikeInstalled" -Status "failed" -ErrorMsg $errMsg
+if ([string]::IsNullOrWhiteSpace($CrowdStrikeSecret)) {
+    $cidErr = "CrowdStrikeSecret is empty - CID not loaded from secrets file"
+    Write-Host "ERROR: $cidErr" -ForegroundColor Red
+    Send-BuildEvent -Stage "CrowdStrikeInstalled" -Status "failed" -ErrorMsg $cidErr
     Send-LogEvent -Level "ERROR" -Section "CrowdStrikeInstalled" `
-        -Message "CrowdStrike install failed" -Detail $errMsg
-    Write-Warning "CrowdStrike install failed: $_"
+        -Message "CrowdStrike skipped - CID secret is empty" `
+        -Detail "Check BUILD_CrowdStrikeSecret is set in Secrets.ps1"
+} else {
+    try {
+        $localPath = "C:\Temp\FalconSensor_Windows.exe"
+        if (-not (Test-Path "C:\Temp")) { New-Item -Path "C:\Temp" -ItemType Directory }
+
+        Invoke-WebRequest -Uri $CrowdStrikeUrl -OutFile $localPath
+
+        $cs = Start-Process -FilePath $localPath `
+            -ArgumentList "/install /quiet /norestart CID=$CrowdStrikeSecret" `
+            -Wait -NoNewWindow -PassThru
+
+        Write-Host "CrowdStrike exit code: $($cs.ExitCode)" -ForegroundColor Gray
+
+        if ($cs.ExitCode -eq 87) {
+            # Exit code 87 usually means CID format issue - try without the slash prefix
+            Write-Host "Exit 87 - retrying with alternate argument format..." -ForegroundColor Yellow
+            $cs2 = Start-Process -FilePath $localPath `
+                -ArgumentList "/install /quiet /norestart /CID=$CrowdStrikeSecret" `
+                -Wait -NoNewWindow -PassThru
+            Write-Host "CrowdStrike retry exit code: $($cs2.ExitCode)" -ForegroundColor Gray
+        }
+
+        $finalCode = if ($cs.ExitCode -eq 87) { $cs2.ExitCode } else { $cs.ExitCode }
+
+        if ($finalCode -ne 0 -and $finalCode -ne 106) {
+            Send-LogEvent -Level "WARNING" -Section "CrowdStrikeInstalled" `
+                -Message "CrowdStrike returned unexpected exit code" `
+                -Detail "Exit code: $finalCode - CID length was $($CrowdStrikeSecret.Length)"
+        }
+
+        # Wait for sensor to connect to Falcon cloud
+        Write-Host "Waiting 60s for CrowdStrike cloud registration..." -ForegroundColor Gray
+        Start-Sleep -Seconds 60
+
+        # Verify service is running
+        $csService = Get-Service -Name CSFalconService -ErrorAction SilentlyContinue
+        if ($csService) {
+            Write-Host "CSFalconService status: $($csService.Status)" -ForegroundColor Gray
+            if ($csService.Status -ne "Running") {
+                Send-LogEvent -Level "WARNING" -Section "CrowdStrikeInstalled" `
+                    -Message "CSFalconService not in Running state" `
+                    -Detail "Service status: $($csService.Status) - Exit code was: $finalCode"
+            }
+        } else {
+            Send-LogEvent -Level "WARNING" -Section "CrowdStrikeInstalled" `
+                -Message "CSFalconService not found after install" `
+                -Detail "Exit code was: $finalCode - Service may not have registered"
+            Write-Host "WARNING: CSFalconService not found" -ForegroundColor Yellow
+        }
+
+        Send-BuildEvent -Stage "CrowdStrikeInstalled"
+
+    } catch {
+        $errMsg = $_.Exception.Message
+        Send-BuildEvent -Stage "CrowdStrikeInstalled" -Status "failed" -ErrorMsg $errMsg
+        Send-LogEvent -Level "ERROR" -Section "CrowdStrikeInstalled" `
+            -Message "CrowdStrike install failed" -Detail $errMsg
+        Write-Warning "CrowdStrike install failed: $_"
+    }
 }
 
 #=======================================================================
 #   [OS] Enroll in Autopilot
+#   ComputerName = current machine name for CimSession (local WMI)
+#   AssignedComputerName = $deviceName from DeviceName.txt (desired name)
 #=======================================================================
 
 Write-Host -ForegroundColor Green "Starting Autopilot Registration"
@@ -302,6 +345,7 @@ try {
         AppSecret            = $AutopilotAppSecret
         GroupTag             = $GroupTag
         Assign               = $true
+        ComputerName         = $env:COMPUTERNAME
         AssignedComputerName = $deviceName
     }
 
@@ -317,8 +361,7 @@ try {
 
 #=======================================================================
 #   [OS] Collect Hardware Info
-#   Moved to after Autopilot to avoid triggering driver reloads
-#   during the install phase which caused unexpected reboots.
+#   Collected after Autopilot to avoid driver reloads causing reboots
 #=======================================================================
 
 $cpuName  = (Get-CimInstance Win32_Processor).Name
@@ -326,10 +369,8 @@ $ram      = [math]::Round((Get-CimInstance Win32_PhysicalMemory | Measure-Object
 $diskSize = (Get-CimInstance Win32_DiskDrive | ForEach-Object { "{0} GB" -f ([math]::Round($_.Size / 1GB, 2)) }) -join ", "
 $model    = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
 
-# Brief pause to allow MAC address to be readable
 Start-Sleep -Seconds 5
 
-# WiFi MAC - filters empty MACs and sorts so primary adapter wins
 $wifiAdapter = Get-NetAdapter | Where-Object {
     ($_.Name -like "*Wi-Fi*" -or
      $_.InterfaceDescription -match "Wireless|Wi-Fi|802\.11|MediaTek|Intel.*WiFi|Qualcomm.*WiFi|Realtek.*WiFi") -and
@@ -344,7 +385,6 @@ if ($wifiAdapter) {
     $wifiMac = "NOT_FOUND"
     Write-Host "ERROR: No Wi-Fi adapter found with a valid MAC address!" -ForegroundColor Red
 
-    # Log all detected Wi-Fi adapters for diagnostics
     $allWifi = Get-NetAdapter | Where-Object {
         $_.Name -like "*Wi-Fi*" -or
         $_.InterfaceDescription -match "Wireless|Wi-Fi|802\.11"
