@@ -436,7 +436,9 @@ if ($hasMac) {
 #   [OS] Stage: BuildComplete
 #=======================================================================
 
-Send-BuildEvent -Stage "BuildComplete"
+Send-BuildEvent -Stage "BuildComplete" -Extra @{
+    user = $builder
+}
 
 #=======================================================================
 #   [OS] Tidy Up
