@@ -250,7 +250,7 @@ if ([string]::IsNullOrWhiteSpace($CrowdStrikeSecret)) {
         if ($cs.ExitCode -eq 87) {
             Write-Host "Exit 87 - retrying with alternate argument format..." -ForegroundColor Yellow
             $cs2 = Start-Process -FilePath $localPath `
-                -ArgumentList "/install /quiet /norestart /CID=$CrowdStrikeSecret" `
+                -ArgumentList "/install /quiet /norestart /CID=$CrowdStrikeSecret GROUPING_TAGS="Stock-Build"`
                 -Wait -NoNewWindow -PassThru
             Write-Host "CrowdStrike retry exit code: $($cs2.ExitCode)" -ForegroundColor Gray
         }
