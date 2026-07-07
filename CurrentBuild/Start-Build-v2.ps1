@@ -241,9 +241,9 @@ if ([string]::IsNullOrWhiteSpace($CrowdStrikeSecret)) {
 
         Invoke-WebRequest -Uri $CrowdStrikeUrl -OutFile $localPath
 
-        $cs = Start-Process -FilePath $localPath `
-            -ArgumentList "/install /quiet /norestart CID=$CrowdStrikeSecret" `
-            -Wait -NoNewWindow -PassThru
+        $cs2 = Start-Process -FilePath $localPath `
+        -ArgumentList "/install /quiet /norestart /CID=$CrowdStrikeSecret GROUPING_TAGS=Stock-Build" `
+        -Wait -NoNewWindow -PassThru
 
         Write-Host "CrowdStrike exit code: $($cs.ExitCode)" -ForegroundColor Gray
 
