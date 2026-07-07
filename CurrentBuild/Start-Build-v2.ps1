@@ -241,16 +241,16 @@ if ([string]::IsNullOrWhiteSpace($CrowdStrikeSecret)) {
 
         Invoke-WebRequest -Uri $CrowdStrikeUrl -OutFile $localPath
 
-        $cs2 = Start-Process -FilePath $localPath `
-        -ArgumentList "/install /quiet /norestart /CID=$CrowdStrikeSecret GROUPING_TAGS=Stock-Build" `
-        -Wait -NoNewWindow -PassThru
+        $cs = Start-Process -FilePath $localPath `
+            -ArgumentList "/install /quiet /norestart CID=$CrowdStrikeSecret" `
+            -Wait -NoNewWindow -PassThru
 
         Write-Host "CrowdStrike exit code: $($cs.ExitCode)" -ForegroundColor Gray
 
         if ($cs.ExitCode -eq 87) {
             Write-Host "Exit 87 - retrying with alternate argument format..." -ForegroundColor Yellow
             $cs2 = Start-Process -FilePath $localPath `
-                -ArgumentList "/install /quiet /norestart /CID=$CrowdStrikeSecret GROUPING_TAGS="Stock-Build"`
+                -ArgumentList "/install /quiet /norestart /CID=$CrowdStrikeSecret GROUPING_TAGS=Stock-Build" `
                 -Wait -NoNewWindow -PassThru
             Write-Host "CrowdStrike retry exit code: $($cs2.ExitCode)" -ForegroundColor Gray
         }
