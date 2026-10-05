@@ -176,7 +176,7 @@ $comboBuild.Size          = New-Object System.Drawing.Size(378, 28)
 $comboBuild.Font          = New-Object System.Drawing.Font("Segoe UI", 10)
 $comboBuild.DropDownStyle = "DropDownList"
 $comboBuild.BackColor     = [System.Drawing.Color]::White
-$comboBuild.Items.AddRange(@("Standard", "Care", "Kiosk-Chapel"))
+$comboBuild.Items.AddRange(@("Standard", "Care", "Kiosk-Chapel", "PAW"))
 $form.Controls.Add($comboBuild)
 
 # -- Builder label --------------------------------------------
